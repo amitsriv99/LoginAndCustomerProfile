@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="true"
+	xmlns:log4j='http://jakarta.apache.org/log4j/'>
+
+	<appender name="ConsoleLogger" class="org.apache.log4j.ConsoleAppender">
+	    <layout class="org.apache.log4j.PatternLayout">
+		<param name="ConversionPattern" 
+		  value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n" />
+	    </layout>
+	</appender>
+
+	<appender name="AppLogger" class="org.apache.log4j.RollingFileAppender">
+	   <param name="append" value="false" />
+	   <param name="maxFileSize" value="10MB" />
+	   <param name="maxBackupIndex" value="10" />
+	   <param name="file" value="${catalina.home}/logs/login-profile-service-app.log" />
+	   <layout class="org.apache.log4j.PatternLayout">
+		<param name="ConversionPattern" 
+			value="%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n" />
+	   </layout>
+	</appender>
+
+	<appender name="TraceLogger" class="org.apache.log4j.RollingFileAppender">
+	   <param name="append" value="false" />
+	   <param name="maxFileSize" value="10MB" />
+	   <param name="maxBackupIndex" value="5" />
+	   <param name="file" value="${catalina.home}/logs/login-profile-service-trace.log" />
+	   <layout class="org.apache.log4j.PatternLayout">
+		<param name="ConversionPattern" 
+			value="%d{yyyy-MM-dd HH:mm:ss} [%t]:[%X{CLIENT_TRACE_ID}] %-5p %c{1}:%L - %m%n" />
+	   </layout>
+	</appender>
+
+    <logger name="com.labizy.services.login.TraceLogger">
+        <level value="INFO" />
+        <appender-ref ref="TraceLogger"/>
+    </logger>
+
+    <logger name="com.labizy.services.login.AppLogger">
+        <level value="WARN" />
+        <appender-ref ref="AppLogger"/>
+    </logger>
+
+	<root>
+		<level value="WARN" />
+		<appender-ref ref="ConsoleLogger" />
+		<appender-ref ref="AppLogger" />
+	</root>
+</log4j:configuration>
