@@ -44,4 +44,8 @@
 		<bean id="LoginProfileServiceController" class="com.labizy.services.login.LoginProfileServiceController">
 			<property name="cacheFactory" ref="CacheFactory"/>
 		</bean>
+
+		<bean id="UserProfileDaoManager" class="com.labizy.services.login.dao.manager.UserProfileDaoManager">
+			<property name="commonUtils" ref="CommonUtils"/>
+		</bean>
 </beans>

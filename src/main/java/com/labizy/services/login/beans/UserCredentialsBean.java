@@ -4,9 +4,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserCredentialsBean {
+	private String userId;
 	private String emailId;
 	private String password;
 	
+	public String getUserId() {
+		return userId;
+	}
+	public void setUserId(String userId) {
+		this.userId = userId;
+	}
 	public String getEmailId() {
 		return emailId;
 	}
