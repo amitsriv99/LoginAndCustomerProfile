@@ -1,7 +1,9 @@
 package com.labizy.services.login.utils;
 
 import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -16,6 +18,7 @@ import com.labizy.services.login.exceptions.EnvironNotDefPropertiesBuilderExcept
 
 public class CommonUtils {
 	private static Logger logger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
+	private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy");
 	
 	private PropertiesBean commonProperties;
 	private List<Integer> listOfNumbers = null;
@@ -29,6 +32,13 @@ public class CommonUtils {
 		this.seed = seed;
 	}
 
+	public final String getTimestampAsDateString(java.sql.Timestamp timestamp){
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeInMillis(timestamp.getTime());
+		
+		return simpleDateFormat.format(calendar.getTime());
+	}
+	
 	public final String getUniqueGeneratedId(String prefix, String suffix){
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside UniqueIdGenerator.getUniqueGeneratedId() method..");
