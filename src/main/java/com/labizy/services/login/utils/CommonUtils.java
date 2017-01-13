@@ -1,6 +1,7 @@
 package com.labizy.services.login.utils;
 
 import java.text.MessageFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -32,6 +33,18 @@ public class CommonUtils {
 		this.seed = seed;
 	}
 
+	public final java.util.Date getStringAsDate(String dateString){
+		java.util.Date date = null;
+		
+		try {
+			date = simpleDateFormat.parse(dateString);
+		} catch (ParseException e) {
+			logger.error(e.toString());
+		}
+		
+		return date;
+	}
+	
 	public final String getTimestampAsDateString(java.sql.Timestamp timestamp){
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(timestamp.getTime());

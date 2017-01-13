@@ -45,7 +45,7 @@ public final class DatabaseConnection {
 	
 	public static void main(String[] args) throws Exception{
 		System.out.println("Connecting to DB..");
-		getDatabaseConnection("labizy_db");
+		getDatabaseConnection("labizy_user_db");
 		System.out.println("Connected to DB.....");
 	}
 }
