@@ -18,17 +18,25 @@ import com.labizy.services.login.exceptions.UniqueKeyViolationException;
 import com.labizy.services.login.utils.CommonUtils;
 
 import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class UserProfileDaoManager {
 	private static Logger logger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
 	
 	private CommonUtils commonUtils;
+	private String databaseName;
+	
 	public void setCommonUtils(CommonUtils commonUtils) {
 		this.commonUtils = commonUtils;
 	}
 	
+	public void setDatabaseName(String databaseName) {
+		this.databaseName = databaseName;
+	}
+
 	public Map<String, String> createUserProfile(String userId, String title, String firstName, String middleName, 
 									String lastName, String sex, java.util.Date dateOfBirth, String maritalStatus, 
 										String profilePictureUrl, boolean isPrimaryProfile) 
@@ -39,7 +47,7 @@ public class UserProfileDaoManager {
 		
 		Map<String, String> userProfileMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 
 		try{
 			connection.setAutoCommit(false);
@@ -101,7 +109,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserProfileDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_tb.user_id AS user_id, title, first_name, "
@@ -186,7 +194,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserPrimaryAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -276,7 +284,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -367,7 +375,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -456,6 +464,164 @@ public class UserProfileDaoManager {
 		return result;
 	}
 	
+	public List<Map<String, String>> getUserAddressDetails(String userId)
+			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		List<Map<String, String>> result = null;
+
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
+		}
+
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		PreparedStatement preparedStatement = null;
+		try{
+			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
+								+ "house_or_apartment_name, street_address, locality_name, city_town_or_village, "
+								+ "state, country, pin_code, landmark, latitude, longitude, is_primary_address, is_billing_address " 
+								+ "FROM address_tb, user_address_tb WHERE user_id = ?"; 	
+
+			preparedStatement = connection.prepareStatement(sqlQuery);
+			preparedStatement.setNString(1, userId);
+			
+			ResultSet rs = preparedStatement.executeQuery();
+			result = new ArrayList<Map<String, String>>();
+			while(rs.next()){
+				Map<String, String> addressMap = new HashMap<String, String>(); 
+				addressMap.put("userId", userId);
+
+				String addressId = rs.getNString("address_id");
+				addressMap.put("addressId", addressId);
+
+				String houseOrFlatNumber = rs.getNString("house_or_flat_number");
+				addressMap.put("houseOrFlatNumber", houseOrFlatNumber);
+
+				String houseOrApartmentName = rs.getNString("house_or_apartment_name");
+				addressMap.put("houseOrApartmentName", houseOrApartmentName);
+
+				String streetAddress = rs.getNString("street_address");
+				addressMap.put("streetAddress", streetAddress);
+
+				String localityName = rs.getNString("locality_name");
+				addressMap.put("localityName", localityName);
+
+				String cityTownOrVillage = rs.getNString("city_town_or_village");
+				addressMap.put("cityTownOrVillage", cityTownOrVillage);
+
+				String state = rs.getNString("state");
+				addressMap.put("state", state);
+
+				String country = rs.getNString("country");
+				addressMap.put("country", country);
+
+				String pinCode = rs.getNString("pin_code");
+				addressMap.put("pinCode", pinCode);
+
+				String landmark = rs.getNString("landmark");
+				addressMap.put("landmark", landmark);
+
+				Double latitude = rs.getDouble("latitude");
+				if((latitude == null) || (latitude.isNaN()) || (latitude.isInfinite())){
+					addressMap.put("latitude", "");
+				}else{
+					addressMap.put("latitude", Double.toString(latitude));
+				}
+
+				Double longitude = rs.getDouble("longitude");
+				if((longitude == null) || (longitude.isNaN()) || (longitude.isInfinite())){
+					addressMap.put("longitude", "");
+				}else{
+					addressMap.put("longitude", Double.toString(longitude));
+				}
+				
+				boolean isPrimaryAddress = rs.getBoolean("is_primary_address");
+				addressMap.put("isPrimaryAddress", Boolean.toString(isPrimaryAddress));
+				
+				boolean isBillingAddress = rs.getBoolean("is_billing_address");
+				addressMap.put("isBillingAddress", Boolean.toString(isBillingAddress));
+				
+				result.add(addressMap);
+			}
+
+			if(result.isEmpty()){
+				throw new DataNotFoundException("User/Address either doesn't exist or has been deleted.");
+			}
+		}catch (SQLException e){
+			logger.error(e.getMessage());
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				preparedStatement.close();
+				connection.close();
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
+			preparedStatement = null;
+			connection = null;
+		}
+
+		return result;
+	}
+
+	public List<Map<String, String>> getUserContactDetails(String userId)
+			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		List<Map<String, String>> result = null;
+
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String)");
+		}
+
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		PreparedStatement preparedStatement = null;
+		
+		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail, contact_type, is_primary_contact "
+				+ "FROM contact_tb, user_contact_tb "
+				+ "WHERE user_id = ?"; 	
+
+		try{
+			preparedStatement = connection.prepareStatement(sqlQuery);
+			preparedStatement.setNString(1, userId);
+			
+			ResultSet rs = preparedStatement.executeQuery();
+			result = new ArrayList<Map<String, String>>();
+			while(rs.next()){
+				Map<String, String> contactMap = new HashMap<String, String>();
+				contactMap.put("userId", userId);
+				
+				String contactId = rs.getNString("contact_id");
+				contactMap.put("contactId", contactId);
+				
+				boolean isPrimaryContact = rs.getBoolean("is_primary_contact");
+				contactMap.put("isPrimaryContact", Boolean.toString(isPrimaryContact));
+				
+				String contactType = rs.getNString("contact_type");
+				contactMap.put("contactType", contactType);
+				
+				String contactDetail = rs.getNString("contact_detail");
+				contactMap.put("contactDetail", contactDetail);
+				
+				result.add(contactMap);
+			}
+			
+			if(result.isEmpty()){
+				throw new DataNotFoundException("User/Contact either doesn't exist or has been deleted.");
+			}
+		}catch (SQLException e){
+			logger.error(e.getMessage());
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				preparedStatement.close();
+				connection.close();
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
+			preparedStatement = null;
+			connection = null;
+		}
+		
+		return result;
+	}
+
 	public Map<String, String> getUserContactDetails(String userId, String contactType, boolean isPrimaryContact)
 									throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		HashMap<String, String> result = null;
@@ -464,7 +630,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String, String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail "
@@ -514,6 +680,7 @@ public class UserProfileDaoManager {
 		
 		return result;
 	}
+
 	public Map<String, String> getUserContactDetails(String userId, String contactId)
 			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		HashMap<String, String> result = null;
@@ -521,7 +688,7 @@ public class UserProfileDaoManager {
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String, String, boolean)");
 		}
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_type, contact_detail, is_primary_contact "
@@ -581,7 +748,8 @@ public class UserProfileDaoManager {
 		String userId = null;
 		boolean userAlreadyExists = false;
 		try{
-			userId = getUserId(emailId);
+			Map<String, String> result = getUserId(emailId, null);
+			userId = result.get("userId");
 			userAlreadyExists = !(StringUtils.isEmpty(userId));
 		}catch(Exception e){
 			logger.error(e.getMessage());
@@ -592,9 +760,9 @@ public class UserProfileDaoManager {
 		}else{
 			userId = commonUtils.getUniqueGeneratedId("USER", null);
 			PreparedStatement preparedStatement = null;
-			Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+			Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 			
-			String sqlQuery = "INSERT INTO user_tb(user_id, email_id, password, status) VALUES (?, ?, ?, ?)";
+			String sqlQuery = "INSERT INTO user_tb(user_id, email_id, password, status, is_real_user) VALUES (?, ?, ?, ?, ?)";
 			
 			try{
 				connection.setAutoCommit(false);
@@ -604,6 +772,7 @@ public class UserProfileDaoManager {
 				preparedStatement.setNString(2, emailId);
 				preparedStatement.setNString(3, password);
 				preparedStatement.setNString(4, null);
+				preparedStatement.setBoolean(5, true);
 				
 				preparedStatement.execute();
 				connection.commit();
@@ -641,7 +810,7 @@ public class UserProfileDaoManager {
 		String addressId = null;
 		Map<String, String> userAddressMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 
 		addressId = commonUtils.getUniqueGeneratedId("ADDR", null);
 
@@ -720,7 +889,7 @@ public class UserProfileDaoManager {
 		}
 
 		String contactId = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT contact_id, contact_type, contact_detail FROM contact_tb WHERE contact_type = ? AND contact_detail = ?";
@@ -763,7 +932,7 @@ public class UserProfileDaoManager {
 		
 		Map<String, String> userContactMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 
 		String contactId = null;
 		try{
@@ -828,7 +997,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.updateUserStatus(String, String)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		Statement statement = null;
 		try{
 			connection.setAutoCommit(false);
@@ -897,24 +1066,51 @@ public class UserProfileDaoManager {
 		}
 	}
 
-	public String getUserId(String emailId) 
+	public Map<String, String> getUserId(String emailId, String password) 
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
-		String userId = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Map<String, String> result = null;
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
-			String sqlQuery = "SELECT user_id, email_id, password, status FROM user_tb WHERE (status IS NULL OR status <> 'DELETED') AND email_id = ?";
-			preparedStatement = connection.prepareStatement(sqlQuery);
-			preparedStatement.setNString(1, emailId);
-			
+			String sqlQuery1 = "SELECT user_id, email_id, password, status, is_real_user "
+								+ "FROM user_tb "
+								+ "WHERE (status IS NULL OR status <> 'DELETED') AND email_id = ?";
+
+			String sqlQuery2 = "SELECT user_id, email_id, password, status, is_real_user "
+								+ "FROM user_tb "
+								+ "WHERE (status IS NULL OR status <> 'DELETED') AND email_id = ? AND password = ?";
+
+			if(StringUtils.isEmpty(password)){
+				preparedStatement = connection.prepareStatement(sqlQuery1);
+				preparedStatement.setNString(1, emailId);
+			}else{
+				preparedStatement = connection.prepareStatement(sqlQuery2);
+				preparedStatement.setNString(1, emailId);
+				preparedStatement.setNString(2, password);
+			}
+
 			ResultSet rs = preparedStatement.executeQuery();
+			result = new HashMap<String, String>();
 			
 			while(rs.next()){
-				userId = rs.getNString("user_id");
+				result.put("emailId", emailId);
+				
+				String userId = rs.getNString("user_id");
+				result.put("userId", userId);
+
+				password = rs.getNString("password");
+				result.put("password", password);
+				
+				String status = rs.getNString("status");
+				result.put("status", status);
+				
+				boolean isRealUser = rs.getBoolean("is_real_user");
+				result.put("isRealUser", Boolean.toString(isRealUser));
+				
 				break;
 			}
 			
-			if(StringUtils.isEmpty(userId)){
+			if(result.isEmpty()){
 				throw new DataNotFoundException("User either doesn't exist or has been deleted.");
 			}
 		}catch (SQLException e){
@@ -931,14 +1127,14 @@ public class UserProfileDaoManager {
 			connection = null;
 		}
 		
-		return userId; 
+		return result; 
 	}
 
 	public String getUserStatus(String userId) 
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		String status = null;
 		String emailId = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection("labizy_user_db");
+		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, email_id, password, status FROM user_tb WHERE user_id = ?";
@@ -980,7 +1176,9 @@ public class UserProfileDaoManager {
 		
 		UserProfileDaoManager daoMgr = new UserProfileDaoManager();
 		CommonUtils commonUtils = new CommonUtils();
+		
 		daoMgr.setCommonUtils(commonUtils);
+		daoMgr.setDatabaseName("labizy_user_db");
 		
 		String emailId = "prashant3@labizy.com";
 		String password = "$3cr3t";
@@ -989,7 +1187,8 @@ public class UserProfileDaoManager {
 		
 		System.out.println("Calling getUserId(" + emailId + ")");
 		try{
-			userId = daoMgr.getUserId(emailId);
+			Map<String, String> result = daoMgr.getUserId(emailId, null);
+			userId = result.get("userId");
 			System.out.println("User Id : " + userId);
 		}catch(Exception e){
 			System.err.println(e);

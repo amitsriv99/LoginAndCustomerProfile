@@ -34,7 +34,30 @@
 			<property name="prodProperties" ref="ProdProperties"/>
 			<property name="commonUtils" ref="CommonUtils"/>
 		</bean>
+
+		<bean id="UserLoginDatabaseName" class="java.lang.String"><constructor-arg value="labizy_user_db" /></bean>
+		<bean id="UserLoginDaoManager" class="com.labizy.services.login.dao.manager.UserLoginDaoManager">
+			<property name="commonUtils" ref="CommonUtils"/>
+			<property name="databaseName" ref="UserLoginDatabaseName"/>
+			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
+		</bean>
+
+		<bean id="UserProfileDatabaseName" class="java.lang.String"><constructor-arg value="labizy_user_db" /></bean>
+		<bean id="UserProfileDaoManager" class="com.labizy.services.login.dao.manager.UserProfileDaoManager">
+			<property name="commonUtils" ref="CommonUtils"/>
+			<property name="databaseName" ref="UserProfileDatabaseName"/>
+		</bean>
+
+		<bean id="UserLoginDaoAdapter" class="com.labizy.services.login.dao.manager.UserLoginDaoAdapter">
+			<property name="userLoginDaoManager" ref="UserLoginDaoManager"/>
+			<property name="commonUtils" ref="CommonUtils"/>
+		</bean>
 		
+		<bean id="UserProfileDaoAdapter" class="com.labizy.services.login.dao.manager.UserProfileDaoAdapter">
+			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
+			<property name="commonUtils" ref="CommonUtils"/>
+		</bean>
+
 		<bean id="CacheFactory" class="com.labizy.services.login.utils.CacheFactory">
 			<!-- The constructor-arg is cache expiry age in minutes. AUTH token expires every 60 mins.. -->
 			<constructor-arg type="int" value="60"/>
@@ -43,9 +66,7 @@
 		
 		<bean id="LoginProfileServiceController" class="com.labizy.services.login.LoginProfileServiceController">
 			<property name="cacheFactory" ref="CacheFactory"/>
-		</bean>
-
-		<bean id="UserProfileDaoManager" class="com.labizy.services.login.dao.manager.UserProfileDaoManager">
-			<property name="commonUtils" ref="CommonUtils"/>
+			<property name="userLoginDaoAdapter" ref="UserLoginDaoAdapter"/>
+			<property name="userProfileDaoAdapter" ref="UserProfileDaoAdapter"/>
 		</bean>
 </beans>

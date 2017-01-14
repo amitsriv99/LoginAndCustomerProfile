@@ -9,6 +9,7 @@ public class AuthenticationBean {
 	private String expires;
 	private String clientId;
 	private String grantType;
+	private String tokenType;
 	private String errorCode;
 	private String errorDescription;
 
@@ -35,6 +36,12 @@ public class AuthenticationBean {
 	}
 	public void setGrantType(String grantType) {
 		this.grantType = grantType;
+	}
+	public String getTokenType() {
+		return tokenType;
+	}
+	public void setTokenType(String tokenType) {
+		this.tokenType = tokenType;
 	}
 	public String getErrorCode() {
 		return errorCode;
