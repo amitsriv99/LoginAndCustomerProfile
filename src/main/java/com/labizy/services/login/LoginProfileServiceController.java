@@ -60,10 +60,11 @@ public class LoginProfileServiceController {
 		return status;
 	}
 	
-	@RequestMapping(value = "/oauth/v1/token", method = RequestMethod.POST, produces="application/json", headers = "Accept=application/json")
-	public @ResponseBody AuthenticationBean getToken(@RequestParam MultiValueMap<String, String> requestParams, 
+	@RequestMapping(value = "/oauth/v1/token/{action}", method = RequestMethod.POST, produces="application/json", headers = "Accept=application/json")
+	public @ResponseBody AuthenticationBean getToken(@PathVariable("action") String action, @RequestParam MultiValueMap<String, String> requestParams, 
 														@RequestBody(required = false) UserCredentialsBean userCredentialsBean, 
-															final HttpServletResponse httpServletResponse){
+															@RequestHeader(value="X-OAUTH-TOKEN", required = false) String oauthToken,
+																final HttpServletResponse httpServletResponse){
 		if(appLogger.isDebugEnabled()){
 			appLogger.debug("Inside {}", "LoginProfileServiceController.getToken()");
 		}
@@ -74,17 +75,28 @@ public class LoginProfileServiceController {
 		String cacheKey = null;
 		String cacheKeyType = null;
 		
-		if(userCredentialsBean != null){
-			cacheKey = userCredentialsBean.getEmailId();
-			if(! StringUtils.isEmpty(cacheKey)){
-				cacheKeyType = Constants.EMAIL_ID_CACHE_KEY_TYPE;
-			}
-		}
-		
 		String errorCode = "" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		String errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
+		
 		try {
-			authBean = cacheFactory.getCachedObject(cacheKey, cacheKeyType);
+			if((!"issue".equals(action)) || (!"validate".equals(action)) || (!"expire".equals(action))){
+				errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
+				errorDescription = "Unknown action. Please check the service api document to know the appropriate action that is supported.";
+				
+				httpServletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			}else{
+				if("issue".equals(action)){
+					authBean = userLoginDaoAdapter.issueOauthToken(userCredentialsBean);
+				}
+				
+				if("validate".equals(action)){
+					authBean = userLoginDaoAdapter.validateOauthToken(userCredentialsBean, oauthToken);
+				}
+				
+				if("expire".equals(action)){
+					authBean = userLoginDaoAdapter.expireOauthToken(userCredentialsBean, oauthToken);
+				}
+			}
 		} catch (Exception e){
 			appLogger.error("Caught Unknown Exception {}", e);
 			errorDescription = errorDescription + "\n" + e.getMessage();

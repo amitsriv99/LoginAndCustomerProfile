@@ -16,6 +16,7 @@ import com.labizy.services.login.exceptions.DatabaseConnectionException;
 import com.labizy.services.login.exceptions.QueryExecutionException;
 import com.labizy.services.login.exceptions.UniqueKeyViolationException;
 import com.labizy.services.login.utils.CommonUtils;
+import com.labizy.services.login.utils.EncryptionDecryptionUtils;
 
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
@@ -28,7 +29,12 @@ public class UserProfileDaoManager {
 	
 	private CommonUtils commonUtils;
 	private String databaseName;
+	private EncryptionDecryptionUtils encryptionDecryptionUtils;
 	
+	public void setEncryptionDecryptionUtils(EncryptionDecryptionUtils encryptionDecryptionUtils) {
+		this.encryptionDecryptionUtils = encryptionDecryptionUtils;
+	}
+
 	public void setCommonUtils(CommonUtils commonUtils) {
 		this.commonUtils = commonUtils;
 	}
@@ -143,7 +149,7 @@ public class UserProfileDaoManager {
 				result.put("sex", sex);
 				
 				java.sql.Timestamp dateOfBirthTS = rs.getTimestamp("date_of_birth");
-				String dateOfBirth = commonUtils.getTimestampAsDateString(dateOfBirthTS);
+				String dateOfBirth = commonUtils.getTimestampAsDateString(dateOfBirthTS, true);
 				result.put("dateOfBirth", dateOfBirth);
 				
 				String maritalStatus = rs.getNString("marital_status");
@@ -762,7 +768,7 @@ public class UserProfileDaoManager {
 			PreparedStatement preparedStatement = null;
 			Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 			
-			String sqlQuery = "INSERT INTO user_tb(user_id, email_id, password, status, is_real_user) VALUES (?, ?, ?, ?, ?)";
+			String sqlQuery = "INSERT INTO user_tb(user_id, email_id, password, status, is_real_user, is_guest_user, is_internal_user) VALUES (?, ?, ?, ?, ?, ?, ?)";
 			
 			try{
 				connection.setAutoCommit(false);
@@ -770,9 +776,15 @@ public class UserProfileDaoManager {
 				
 				preparedStatement.setNString(1, userId);
 				preparedStatement.setNString(2, emailId);
-				preparedStatement.setNString(3, password);
+				
+				String decodedPassword = encryptionDecryptionUtils.decodeToBase64String(password);
+				String hashedPassword = encryptionDecryptionUtils.hashToBase64String(decodedPassword);
+				preparedStatement.setNString(3, hashedPassword);
+
 				preparedStatement.setNString(4, null);
 				preparedStatement.setBoolean(5, true);
+				preparedStatement.setBoolean(6, false);
+				preparedStatement.setBoolean(7, false);
 				
 				preparedStatement.execute();
 				connection.commit();
@@ -1072,11 +1084,11 @@ public class UserProfileDaoManager {
 		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
-			String sqlQuery1 = "SELECT user_id, email_id, password, status, is_real_user "
+			String sqlQuery1 = "SELECT user_id, email_id, password, status, is_real_user, is_guest_user "
 								+ "FROM user_tb "
 								+ "WHERE (status IS NULL OR status <> 'DELETED') AND email_id = ?";
 
-			String sqlQuery2 = "SELECT user_id, email_id, password, status, is_real_user "
+			String sqlQuery2 = "SELECT user_id, email_id, password, status, is_real_user, is_guest_user "
 								+ "FROM user_tb "
 								+ "WHERE (status IS NULL OR status <> 'DELETED') AND email_id = ? AND password = ?";
 
@@ -1086,9 +1098,12 @@ public class UserProfileDaoManager {
 			}else{
 				preparedStatement = connection.prepareStatement(sqlQuery2);
 				preparedStatement.setNString(1, emailId);
-				preparedStatement.setNString(2, password);
+				
+				String decodedPassword = encryptionDecryptionUtils.decodeToBase64String(password);
+				String hashedPassword = encryptionDecryptionUtils.hashToBase64String(decodedPassword);
+				preparedStatement.setNString(2, hashedPassword);
 			}
-
+			
 			ResultSet rs = preparedStatement.executeQuery();
 			result = new HashMap<String, String>();
 			
@@ -1097,6 +1112,7 @@ public class UserProfileDaoManager {
 				
 				String userId = rs.getNString("user_id");
 				result.put("userId", userId);
+				result.put("clientId", userId);
 
 				password = rs.getNString("password");
 				result.put("password", password);
@@ -1106,12 +1122,19 @@ public class UserProfileDaoManager {
 				
 				boolean isRealUser = rs.getBoolean("is_real_user");
 				result.put("isRealUser", Boolean.toString(isRealUser));
-				
+
+				boolean isGuestUser = rs.getBoolean("is_guest_user");
+				result.put("isGuestUser", Boolean.toString(isGuestUser));
+
 				break;
 			}
 			
 			if(result.isEmpty()){
-				throw new DataNotFoundException("User either doesn't exist or has been deleted.");
+				if(StringUtils.isEmpty(password)){
+					throw new DataNotFoundException("Either user email id doesn't exist or user has been deleted.");
+				}else{
+					throw new DataNotFoundException("Either user email id doesn't exist or password doesn't match or user has been deleted.");
+				}
 			}
 		}catch (SQLException e){
 			logger.error(e.getMessage());
@@ -1176,27 +1199,31 @@ public class UserProfileDaoManager {
 		
 		UserProfileDaoManager daoMgr = new UserProfileDaoManager();
 		CommonUtils commonUtils = new CommonUtils();
+		EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
 		
 		daoMgr.setCommonUtils(commonUtils);
 		daoMgr.setDatabaseName("labizy_user_db");
+		daoMgr.setEncryptionDecryptionUtils(encryptionDecryptionUtils);
 		
-		String emailId = "prashant3@labizy.com";
-		String password = "$3cr3t";
+		String emailId = "prashant5@labizy.com";
+		String base64EncodedPassword = "JDNjcjN0"; //String password = "$3cr3t";
+		
 		String userId = null;
 		String status = null;
+		Map<String, String> result = null;
 		
 		System.out.println("Calling getUserId(" + emailId + ")");
 		try{
-			Map<String, String> result = daoMgr.getUserId(emailId, null);
+			result = daoMgr.getUserId(emailId, null);
 			userId = result.get("userId");
 			System.out.println("User Id : " + userId);
 		}catch(Exception e){
 			System.err.println(e);
 		}
 		
-/*		System.out.println("Calling createUser(" + emailId + "," + password +")");
+		System.out.println("Calling createUser(" + emailId + "," + base64EncodedPassword +")");
 		try{
-			userId = daoMgr.createUser(emailId, password);
+			userId = daoMgr.createUser(emailId, base64EncodedPassword);
 			System.out.println("UserId : " + userId);
 		}catch(Exception e){
 			System.err.println(e);
@@ -1204,13 +1231,14 @@ public class UserProfileDaoManager {
 		
 		System.out.println("Calling getUser(" + emailId + ")");
 		try{
-			userId = daoMgr.getUserId(emailId);
+			result = daoMgr.getUserId(emailId, null);
+			userId = result.get("userId");
 			System.out.println("User Id : " + userId);
 		}catch(Exception e){
 			System.err.println(e);
 		}
 		
-
+/*
 		System.out.println("Calling createUserProfile(" + userId + ")");
 		Map<String, String> userProfileMap = null;
 		try{

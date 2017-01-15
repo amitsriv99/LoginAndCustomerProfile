@@ -34,6 +34,8 @@
 			<property name="prodProperties" ref="ProdProperties"/>
 			<property name="commonUtils" ref="CommonUtils"/>
 		</bean>
+		
+		<bean id="EncryptionDecryptionUtils" class="com.labizy.services.login.utils.EncryptionDecryptionUtils"/>
 
 		<bean id="UserLoginDatabaseName" class="java.lang.String"><constructor-arg value="labizy_user_db" /></bean>
 		<bean id="UserLoginDaoManager" class="com.labizy.services.login.dao.manager.UserLoginDaoManager">
@@ -46,10 +48,12 @@
 		<bean id="UserProfileDaoManager" class="com.labizy.services.login.dao.manager.UserProfileDaoManager">
 			<property name="commonUtils" ref="CommonUtils"/>
 			<property name="databaseName" ref="UserProfileDatabaseName"/>
+			<property name="encryptionDecryptionUtils" ref="EncryptionDecryptionUtils"/>
 		</bean>
 
 		<bean id="UserLoginDaoAdapter" class="com.labizy.services.login.dao.manager.UserLoginDaoAdapter">
 			<property name="userLoginDaoManager" ref="UserLoginDaoManager"/>
+			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
 			<property name="commonUtils" ref="CommonUtils"/>
 		</bean>
 		
@@ -57,7 +61,7 @@
 			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
 			<property name="commonUtils" ref="CommonUtils"/>
 		</bean>
-
+		
 		<bean id="CacheFactory" class="com.labizy.services.login.utils.CacheFactory">
 			<!-- The constructor-arg is cache expiry age in minutes. AUTH token expires every 60 mins.. -->
 			<constructor-arg type="int" value="60"/>

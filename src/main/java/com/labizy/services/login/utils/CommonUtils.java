@@ -20,6 +20,7 @@ import com.labizy.services.login.exceptions.EnvironNotDefPropertiesBuilderExcept
 public class CommonUtils {
 	private static Logger logger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
 	private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy");
+	private static SimpleDateFormat simpleDateTimeFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:SS");
 	
 	private PropertiesBean commonProperties;
 	private List<Integer> listOfNumbers = null;
@@ -36,6 +37,10 @@ public class CommonUtils {
 	public final java.util.Date getStringAsDate(String dateString){
 		java.util.Date date = null;
 		
+		if(StringUtils.isEmpty(dateString)){
+			return null;
+		}
+		
 		try {
 			date = simpleDateFormat.parse(dateString);
 		} catch (ParseException e) {
@@ -44,12 +49,23 @@ public class CommonUtils {
 		
 		return date;
 	}
-	
-	public final String getTimestampAsDateString(java.sql.Timestamp timestamp){
+
+	public final java.sql.Timestamp getCurrentDateTimeAsSqlTimestamp(){
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeInMillis(System.currentTimeMillis());
+		
+		return new java.sql.Timestamp(calendar.getTimeInMillis());
+	}
+
+	public final String getTimestampAsDateString(java.sql.Timestamp timestamp, boolean onlyDatePart){
+		if(timestamp == null){
+			return null;
+		}
+		
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(timestamp.getTime());
 		
-		return simpleDateFormat.format(calendar.getTime());
+		return ((onlyDatePart) ? simpleDateFormat.format(calendar.getTime()) : simpleDateTimeFormat.format(calendar.getTime()));
 	}
 	
 	public final String getUniqueGeneratedId(String prefix, String suffix){
