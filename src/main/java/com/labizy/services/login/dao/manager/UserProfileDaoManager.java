@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import com.labizy.services.login.beans.PropertiesBean;
+import com.labizy.services.login.builder.PropertiesBuilder;
 import com.labizy.services.login.dao.util.DatabaseConnection;
 import com.labizy.services.login.exceptions.DataIntegrityException;
 import com.labizy.services.login.exceptions.DataNotFoundException;
@@ -21,8 +23,10 @@ import com.labizy.services.login.utils.EncryptionDecryptionUtils;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class UserProfileDaoManager {
 	private static Logger logger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
@@ -30,7 +34,13 @@ public class UserProfileDaoManager {
 	private CommonUtils commonUtils;
 	private String databaseName;
 	private EncryptionDecryptionUtils encryptionDecryptionUtils;
-	
+	private DatabaseConnection databaseConnection;
+		
+	public void setDatabaseConnection(DatabaseConnection databaseConnection) {
+		this.databaseConnection = databaseConnection;
+	}
+
+
 	public void setEncryptionDecryptionUtils(EncryptionDecryptionUtils encryptionDecryptionUtils) {
 		this.encryptionDecryptionUtils = encryptionDecryptionUtils;
 	}
@@ -53,7 +63,7 @@ public class UserProfileDaoManager {
 		
 		Map<String, String> userProfileMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 
 		try{
 			connection.setAutoCommit(false);
@@ -115,7 +125,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserProfileDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_tb.user_id AS user_id, title, first_name, "
@@ -200,7 +210,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserPrimaryAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -290,7 +300,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -381,7 +391,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -478,7 +488,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserBillingAddressDetails(String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
@@ -576,7 +586,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail, contact_type, is_primary_contact "
@@ -636,7 +646,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String, String, boolean)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail "
@@ -694,7 +704,7 @@ public class UserProfileDaoManager {
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserContactDetails(String, String, boolean)");
 		}
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_type, contact_detail, is_primary_contact "
@@ -766,7 +776,7 @@ public class UserProfileDaoManager {
 		}else{
 			userId = commonUtils.getUniqueGeneratedId("USER", null);
 			PreparedStatement preparedStatement = null;
-			Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+			Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 			
 			String sqlQuery = "INSERT INTO user_tb(user_id, email_id, password, status, is_real_user, is_guest_user, is_internal_user) VALUES (?, ?, ?, ?, ?, ?, ?)";
 			
@@ -822,7 +832,7 @@ public class UserProfileDaoManager {
 		String addressId = null;
 		Map<String, String> userAddressMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 
 		addressId = commonUtils.getUniqueGeneratedId("ADDR", null);
 
@@ -901,7 +911,7 @@ public class UserProfileDaoManager {
 		}
 
 		String contactId = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT contact_id, contact_type, contact_detail FROM contact_tb WHERE contact_type = ? AND contact_detail = ?";
@@ -944,7 +954,7 @@ public class UserProfileDaoManager {
 		
 		Map<String, String> userContactMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 
 		String contactId = null;
 		try{
@@ -1009,7 +1019,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.updateUserStatus(String, String)");
 		}
 
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		Statement statement = null;
 		try{
 			connection.setAutoCommit(false);
@@ -1081,7 +1091,7 @@ public class UserProfileDaoManager {
 	public Map<String, String> getUserId(String emailId, String password) 
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		Map<String, String> result = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery1 = "SELECT user_id, email_id, password, status, is_real_user, is_guest_user "
@@ -1157,7 +1167,7 @@ public class UserProfileDaoManager {
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		String status = null;
 		String emailId = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_id, email_id, password, status FROM user_tb WHERE user_id = ?";
@@ -1198,14 +1208,46 @@ public class UserProfileDaoManager {
 		System.out.println("Let's start..");
 		
 		UserProfileDaoManager daoMgr = new UserProfileDaoManager();
-		CommonUtils commonUtils = new CommonUtils();
-		EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
 		
+		String DATABASE_DRIVER = "com.mysql.jdbc.Driver";
+		String DATABASE_URL = "jdbc:mysql://localhost:3306/{0}";
+	    String DATABASE_USERNAME = "bGFiaXp5X3VzZXI=";
+	    String DATABASE_PASSWORD = "bGFiaXp5X3VzZXJfMDA3";
+
+	    System.setProperty("environ", "local");
+	    EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
+		PropertiesBuilder propertiesBuilder = new PropertiesBuilder();
+		
+		PropertiesBean commonProperties = new PropertiesBean();
+		Set<String> supportedEnvirons = new HashSet<String>();
+		supportedEnvirons.add("local");
+		supportedEnvirons.add("prod");
+		supportedEnvirons.add("ppe");
+		commonProperties.setSupportedEnvirons(supportedEnvirons);
+		commonProperties.setEnvironSystemPropertyName("environ");
+		propertiesBuilder.setCommonProperties(commonProperties);
+		
+		PropertiesBean localProperties = new PropertiesBean();
+		localProperties.setDatabaseDriver(DATABASE_DRIVER);
+		localProperties.setDatabaseUrl(DATABASE_URL);
+		localProperties.setDatabaseUser(DATABASE_USERNAME);
+		localProperties.setDatabasePassword(DATABASE_PASSWORD);
+		propertiesBuilder.setLocalProperties(localProperties);
+		
+		CommonUtils commonUtils = new CommonUtils();
+		commonUtils.setCommonProperties(commonProperties);
+		propertiesBuilder.setCommonUtils(commonUtils);
+		
+		DatabaseConnection databaseConnection = new DatabaseConnection();
+		databaseConnection.setPropertiesBuilder(propertiesBuilder);
+		databaseConnection.setEncryptionDecryptionUtils(encryptionDecryptionUtils);
+		
+		daoMgr.setDatabaseConnection(databaseConnection);
 		daoMgr.setCommonUtils(commonUtils);
 		daoMgr.setDatabaseName("labizy_user_db");
 		daoMgr.setEncryptionDecryptionUtils(encryptionDecryptionUtils);
 		
-		String emailId = "prashant5@labizy.com";
+		String emailId = "prashant.kunal@labizy.com";
 		String base64EncodedPassword = "JDNjcjN0"; //String password = "$3cr3t";
 		
 		String userId = null;

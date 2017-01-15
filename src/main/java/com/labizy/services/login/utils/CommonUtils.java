@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import com.labizy.services.login.beans.PropertiesBean;
-import com.labizy.services.login.beans.SupportedEnvironsBean;
 import com.labizy.services.login.exceptions.EnvironNotDefPropertiesBuilderException;
 
 public class CommonUtils {
@@ -126,8 +125,8 @@ public class CommonUtils {
 			logger.info("***** Environment : {} *****", environ);
 		}
 		
-		if((environ == null) || ("".equals(environ.trim())) || (!SupportedEnvironsBean.isEnvironSupported(environ))){
-			throw new EnvironNotDefPropertiesBuilderException("System variable '" + commonProperties.getEnvironSystemPropertyName() + "' is not set to point to one of " + SupportedEnvironsBean.getSupportedEnvirons() + ". Please set -D" + commonProperties.getEnvironSystemPropertyName() + "=local|ppe|test|lnp|prod");
+		if((environ == null) || ("".equals(environ.trim())) || (! commonProperties.getSupportedEnvirons().contains(environ))){
+			throw new EnvironNotDefPropertiesBuilderException("System variable '" + commonProperties.getEnvironSystemPropertyName() + "' is not set to point to one of " + commonProperties.getSupportedEnvirons().toString());
 		}
 		
 		return environ;

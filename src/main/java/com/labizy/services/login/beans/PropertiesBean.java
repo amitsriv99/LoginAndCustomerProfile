@@ -1,37 +1,21 @@
 package com.labizy.services.login.beans;
 
-public class PropertiesBean {
-	private String identityServiceEndpointURL;
-	private String identityServiceRequestBodyTemplate;
-	private String identitySecretSystemPropertyName;
-	private String identityPasswordSystemPropertyName;
-	private long inducedResponseDelayInMilliSec;
+import java.util.Set;
 
+public class PropertiesBean {
+	private Set<String> supportedEnvirons;
 	private String environSystemPropertyName;
+	private String databaseDriver;
+	private String databaseUrl;
+	private String databaseUser;
+	private String databasePassword;
 	
-	private boolean useStubs;
-	private String stubbedIdentityServiceRequestBody;
-	private String stubbedIdentityServiceResponseBody;
-	private int stubbedResponseCode;
-	private String stubbedResponseStatus;
 	
-	public String getIdentityServiceEndpointURL() {
-		return identityServiceEndpointURL;
+	public Set<String> getSupportedEnvirons() {
+		return supportedEnvirons;
 	}
-	public void setIdentityServiceEndpointURL(String identityServiceEndpointURL) {
-		this.identityServiceEndpointURL = identityServiceEndpointURL;
-	}
-	public String getIdentityServiceRequestBodyTemplate() {
-		return identityServiceRequestBodyTemplate;
-	}
-	public void setIdentityServiceRequestBodyTemplate(String identityServiceRequestBodyTemplate) {
-		this.identityServiceRequestBodyTemplate = identityServiceRequestBodyTemplate;
-	}
-	public long getInducedResponseDelayInMilliSec() {
-		return inducedResponseDelayInMilliSec;
-	}
-	public void setInducedResponseDelayInMilliSec(long inducedResponseDelayInMilliSec) {
-		this.inducedResponseDelayInMilliSec = inducedResponseDelayInMilliSec;
+	public void setSupportedEnvirons(Set<String> supportedEnvirons) {
+		this.supportedEnvirons = supportedEnvirons;
 	}
 	public String getEnvironSystemPropertyName() {
 		return environSystemPropertyName;
@@ -39,50 +23,28 @@ public class PropertiesBean {
 	public void setEnvironSystemPropertyName(String environSystemPropertyName) {
 		this.environSystemPropertyName = environSystemPropertyName;
 	}
-	public boolean isUseStubs() {
-		return useStubs;
+	public String getDatabaseDriver() {
+		return databaseDriver;
 	}
-	public void setUseStubs(boolean useStubs) {
-		this.useStubs = useStubs;
+	public void setDatabaseDriver(String databaseDriver) {
+		this.databaseDriver = databaseDriver;
 	}
-	public String getStubbedIdentityServiceRequestBody() {
-		return stubbedIdentityServiceRequestBody;
+	public String getDatabaseUrl() {
+		return databaseUrl;
 	}
-	public void setStubbedIdentityServiceRequestBody(
-			String stubbedIdentityServiceRequestBody) {
-		this.stubbedIdentityServiceRequestBody = stubbedIdentityServiceRequestBody;
+	public void setDatabaseUrl(String databaseUrl) {
+		this.databaseUrl = databaseUrl;
 	}
-	public String getStubbedIdentityServiceResponseBody() {
-		return stubbedIdentityServiceResponseBody;
+	public String getDatabaseUser() {
+		return databaseUser;
 	}
-	public void setStubbedIdentityServiceResponseBody(
-			String stubbedIdentityServiceResponseBody) {
-		this.stubbedIdentityServiceResponseBody = stubbedIdentityServiceResponseBody;
+	public void setDatabaseUser(String databaseUser) {
+		this.databaseUser = databaseUser;
 	}
-	public int getStubbedResponseCode() {
-		return stubbedResponseCode;
+	public String getDatabasePassword() {
+		return databasePassword;
 	}
-	public void setStubbedResponseCode(int stubbedResponseCode) {
-		this.stubbedResponseCode = stubbedResponseCode;
-	}
-	public String getStubbedResponseStatus() {
-		return stubbedResponseStatus;
-	}
-	public void setStubbedResponseStatus(String stubbedResponseStatus) {
-		this.stubbedResponseStatus = stubbedResponseStatus;
-	}
-	public String getIdentitySecretSystemPropertyName() {
-		return identitySecretSystemPropertyName;
-	}
-	public void setIdentitySecretSystemPropertyName(
-			String identitySecretSystemPropertyName) {
-		this.identitySecretSystemPropertyName = identitySecretSystemPropertyName;
-	}
-	public String getIdentityPasswordSystemPropertyName() {
-		return identityPasswordSystemPropertyName;
-	}
-	public void setIdentityPasswordSystemPropertyName(
-			String identityPasswordSystemPropertyName) {
-		this.identityPasswordSystemPropertyName = identityPasswordSystemPropertyName;
+	public void setDatabasePassword(String databasePassword) {
+		this.databasePassword = databasePassword;
 	}
 }

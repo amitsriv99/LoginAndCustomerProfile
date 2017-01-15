@@ -12,6 +12,15 @@
 		
 		<bean id="CommonProperties" class="com.labizy.services.login.beans.PropertiesBean">
 			<property name="environSystemPropertyName" value="environ"/>
+			<property name="supportedEnvirons">
+				<set>
+					<value>local</value>
+					<value>prod</value>
+					<value>lnp</value>
+					<value>ppe</value>
+					<value>test</value>
+				</set>
+			</property>
 		</bean>
 		
 		<bean id="CommonUtils" class="com.labizy.services.login.utils.CommonUtils">
@@ -19,11 +28,21 @@
 			<property name="seed" value="-1"/>
 		</bean>
 		
-		<bean id="LocalProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
+		<bean id="LocalProperties" class="com.labizy.services.login.beans.PropertiesBean">
+			<property name="databaseDriver" value="com.mysql.jdbc.Driver"/>
+			<property name="databaseUrl" value="jdbc:mysql://localhost:3306/{0}"/>
+			<property name="databaseUser" value="bGFiaXp5X3VzZXI="/>
+			<property name="databasePassword" value="bGFiaXp5X3VzZXJfMDA3"/>
+		</bean>
 		<bean id="TestProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
 		<bean id="PPEProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
 		<bean id="LnPProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
-		<bean id="ProdProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
+		<bean id="ProdProperties" class="com.labizy.services.login.beans.PropertiesBean">
+			<property name="databaseDriver" value="com.mysql.jdbc.Driver"/>
+			<property name="databaseUrl" value="jdbc:mysql://localhost:3306/{0}"/>
+			<property name="databaseUser" value="bGFiaXp5X3VzZXI="/>
+			<property name="databasePassword" value="bGFiaXp5X3VzZXJfMDA3"/>
+		</bean>
 		
 		<bean id="PropertiesBuilder" class="com.labizy.services.login.builder.PropertiesBuilder">
 			<property name="commonProperties" ref="CommonProperties"/>
@@ -37,6 +56,11 @@
 		
 		<bean id="EncryptionDecryptionUtils" class="com.labizy.services.login.utils.EncryptionDecryptionUtils"/>
 
+		<bean id="DatabaseConnection" class="com.labizy.services.login.dao.util.DatabaseConnection">
+			<property name="propertiesBuilder" ref="PropertiesBuilder"/>
+			<property name="encryptionDecryptionUtils" ref="EncryptionDecryptionUtils"/>
+		</bean>
+		
 		<bean id="UserLoginDatabaseName" class="java.lang.String"><constructor-arg value="labizy_user_db" /></bean>
 		<bean id="UserLoginDaoManager" class="com.labizy.services.login.dao.manager.UserLoginDaoManager">
 			<property name="commonUtils" ref="CommonUtils"/>

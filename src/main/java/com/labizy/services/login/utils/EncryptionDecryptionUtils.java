@@ -57,7 +57,7 @@ public class EncryptionDecryptionUtils {
 	}
 	
 	public static void main(String[] args){
-		String password = "$3cr3t";
+		String password = "labizy_user";
 		EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
 		
 		String encoded = encryptionDecryptionUtils.encodeToBase64String(password);

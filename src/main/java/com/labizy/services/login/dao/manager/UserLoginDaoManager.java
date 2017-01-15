@@ -6,12 +6,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import com.labizy.services.login.beans.PropertiesBean;
+import com.labizy.services.login.builder.PropertiesBuilder;
 import com.labizy.services.login.dao.util.DatabaseConnection;
 import com.labizy.services.login.exceptions.DataIntegrityException;
 import com.labizy.services.login.exceptions.DataNotFoundException;
@@ -27,7 +31,13 @@ public class UserLoginDaoManager {
 	private CommonUtils commonUtils;
 	private String databaseName;
 	private UserProfileDaoManager userProfileDaoManager;
+	private DatabaseConnection databaseConnection;
 	
+	
+	public void setDatabaseConnection(DatabaseConnection databaseConnection) {
+		this.databaseConnection = databaseConnection;
+	}
+
 	public void setCommonUtils(CommonUtils commonUtils) {
 		this.commonUtils = commonUtils;
 	}
@@ -40,7 +50,7 @@ public class UserLoginDaoManager {
 		this.userProfileDaoManager = userProfileDaoManager;
 	}
 
-	private void insertOauthRecords(String clientId, boolean isGuest, String oauthToken, String oauthTokenType, Connection connection)  
+	private void insertOauthRecords(String clientId, String oauthToken, String oauthTokenType, Connection connection)  
 			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException {
 
 		if(logger.isDebugEnabled()){
@@ -52,22 +62,21 @@ public class UserLoginDaoManager {
 		
 		try{
 			if(isNewConnection){
-				connection = DatabaseConnection.getDatabaseConnection(databaseName);
+				connection = databaseConnection.getDatabaseConnection(databaseName);
 				connection.setAutoCommit(false);
 			}
 			
 			java.sql.Timestamp currentTimestamp = commonUtils.getCurrentDateTimeAsSqlTimestamp();
 			
-			String sqlQuery = "INSERT INTO user_oauth_tb (user_id, oauth_token, oauth_token_issued_on, is_guest, token_type) "
-									+ "VALUES (?, ?, ?, ?, ?)";
+			String sqlQuery = "INSERT INTO user_oauth_tb (user_id, oauth_token, oauth_token_issued_on, token_type) "
+									+ "VALUES (?, ?, ?, ?)";
 
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			
 			preparedStatement.setNString(1, clientId);
 			preparedStatement.setNString(2, oauthToken);
 			preparedStatement.setTimestamp(3, currentTimestamp);
-			preparedStatement.setBoolean(4, isGuest);
-			preparedStatement.setNString(5, oauthTokenType);
+			preparedStatement.setNString(4, oauthTokenType);
 			
 			preparedStatement.execute();
 			preparedStatement.close();
@@ -126,7 +135,7 @@ public class UserLoginDaoManager {
 		
 		try{
 			if(isNewConnection){
-				connection = DatabaseConnection.getDatabaseConnection(databaseName);
+				connection = databaseConnection.getDatabaseConnection(databaseName);
 				connection.setAutoCommit(false);
 			}
 			
@@ -182,7 +191,7 @@ public class UserLoginDaoManager {
 		}
 		
 		Map<String, String> result = null;
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		PreparedStatement preparedStatement = null;
 		
 		try{
@@ -313,7 +322,7 @@ public class UserLoginDaoManager {
 			throw new DataIntegrityException(e);
 		}
 		
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		
 		try{
 			connection.setAutoCommit(false);
@@ -321,7 +330,7 @@ public class UserLoginDaoManager {
 			
 			String oauthToken = commonUtils.getUniqueGeneratedId("OAUTH", ((isRealUser) ? "U" : "S"));
 			String oauthTokenType = (isRealUser) ? "user" : "service";
-			insertOauthRecords(userId, isGuestUser, oauthToken, oauthTokenType, connection);
+			insertOauthRecords(userId, oauthToken, oauthTokenType, connection);
 			
 			connection.commit();
 		}catch(DataNotFoundException e){
@@ -361,7 +370,7 @@ public class UserLoginDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.expireToken(String, String, tokenType)");
 		}
 		
-		Connection connection = DatabaseConnection.getDatabaseConnection(databaseName);
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 		Statement statement = null;
 		try{
 			connection.setAutoCommit(false);
@@ -397,16 +406,49 @@ public class UserLoginDaoManager {
 		System.out.println("Let's start..");
 		UserLoginDaoManager daoMgr = new UserLoginDaoManager();
 		
+		String DATABASE_DRIVER = "com.mysql.jdbc.Driver";
+		String DATABASE_URL = "jdbc:mysql://localhost:3306/{0}";
+	    String DATABASE_USERNAME = "bGFiaXp5X3VzZXI=";
+	    String DATABASE_PASSWORD = "bGFiaXp5X3VzZXJfMDA3";
+
+	    System.setProperty("environ", "local");
+	    EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
+		PropertiesBuilder propertiesBuilder = new PropertiesBuilder();
+		
+		PropertiesBean commonProperties = new PropertiesBean();
+		Set<String> supportedEnvirons = new HashSet<String>();
+		supportedEnvirons.add("local");
+		supportedEnvirons.add("prod");
+		supportedEnvirons.add("ppe");
+		commonProperties.setSupportedEnvirons(supportedEnvirons);
+		commonProperties.setEnvironSystemPropertyName("environ");
+		propertiesBuilder.setCommonProperties(commonProperties);
+		
+		PropertiesBean localProperties = new PropertiesBean();
+		localProperties.setDatabaseDriver(DATABASE_DRIVER);
+		localProperties.setDatabaseUrl(DATABASE_URL);
+		localProperties.setDatabaseUser(DATABASE_USERNAME);
+		localProperties.setDatabasePassword(DATABASE_PASSWORD);
+		propertiesBuilder.setLocalProperties(localProperties);
+		
+		CommonUtils commonUtils = new CommonUtils();
+		commonUtils.setCommonProperties(commonProperties);
+		propertiesBuilder.setCommonUtils(commonUtils);
+		
+		DatabaseConnection databaseConnection = new DatabaseConnection();
+		databaseConnection.setPropertiesBuilder(propertiesBuilder);
+		databaseConnection.setEncryptionDecryptionUtils(encryptionDecryptionUtils);
+		
 		String databaseName = "labizy_user_db";
 		UserProfileDaoManager userProfileDaoMgr = new UserProfileDaoManager();
-		CommonUtils commonUtils = new CommonUtils();
-		EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();
 		
+		daoMgr.setDatabaseConnection(databaseConnection);
 		daoMgr.setCommonUtils(commonUtils);
 		daoMgr.setDatabaseName(databaseName);
 		
 		userProfileDaoMgr.setCommonUtils(commonUtils);
 		userProfileDaoMgr.setDatabaseName(databaseName);
+		userProfileDaoMgr.setDatabaseConnection(databaseConnection);
 		userProfileDaoMgr.setEncryptionDecryptionUtils(encryptionDecryptionUtils);
 		daoMgr.setUserProfileDaoManager(userProfileDaoMgr);
 		
