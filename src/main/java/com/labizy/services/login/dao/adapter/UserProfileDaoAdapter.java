@@ -22,6 +22,7 @@ import com.labizy.services.login.exceptions.DatabaseConnectionException;
 import com.labizy.services.login.exceptions.QueryExecutionException;
 import com.labizy.services.login.exceptions.ServiceException;
 import com.labizy.services.login.exceptions.UniqueKeyViolationException;
+import com.labizy.services.login.exceptions.UserDoesNotExistException;
 import com.labizy.services.login.utils.CommonUtils;
 
 public class UserProfileDaoAdapter {
@@ -186,7 +187,7 @@ public class UserProfileDaoAdapter {
 		return userProfileDetailsResultBean;
 	}
 	
-	public UserProfileDetailsResultBean getUserProfileDetails(String userId) throws ServiceException {
+	public UserProfileDetailsResultBean getUserProfileDetails(String userId) throws ServiceException, UserDoesNotExistException {
 		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
 		
 		if(appLogger.isDebugEnabled()){
@@ -206,6 +207,9 @@ public class UserProfileDaoAdapter {
 			UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
 			userProfileDetailsResultBean.setUserProfile(userProfileBean);
 			
+			UserCredentialsBean userLoginCredentialsBean = getUserLoginDetails(userProfileMap);
+			userProfileDetailsResultBean.setUserLogin(userLoginCredentialsBean);
+
 			if(appLogger.isDebugEnabled()){
 				appLogger.debug("Fetching User Contact Info..");
 			}
@@ -222,15 +226,12 @@ public class UserProfileDaoAdapter {
 
 		} catch (DataNotFoundException e) {
 			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
-			throw new ServiceException(e);
+			throw new UserDoesNotExistException(e);
 		} catch (QueryExecutionException e) {
 			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
 			throw new ServiceException(e);
 		} catch (DatabaseConnectionException e) {
 			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
 			throw new ServiceException(e);
 		}
 		
@@ -240,6 +241,9 @@ public class UserProfileDaoAdapter {
 	private UserProfileBean getUserProfileDetails(Map<String, String> userProfileMap) {
 		UserProfileBean userProfileBean = new UserProfileBean();
 		for(Map.Entry<String, String> entry : userProfileMap.entrySet()){
+			if(entry.getKey().equals("userId")){
+				userProfileBean.setUserId(entry.getValue());
+			}
 			if(entry.getKey().equals("title")){
 				userProfileBean.setTitle(entry.getValue());
 			}
@@ -271,9 +275,30 @@ public class UserProfileDaoAdapter {
 				userProfileBean.setTitle(entry.getValue());
 			}
 		}
+
 		return userProfileBean;
 	}
 
+	private UserCredentialsBean getUserLoginDetails(Map<String, String> userProfileMap){
+		UserCredentialsBean userLoginCredentialsBean = new UserCredentialsBean();
+		
+		for(Map.Entry<String, String> entry : userProfileMap.entrySet()){
+			if(entry.getKey().equals("emailId")){
+				userLoginCredentialsBean.setEmailId(entry.getValue());
+			}
+			if(entry.getKey().equals("status")){
+				userLoginCredentialsBean.setStatus(entry.getValue());
+			}
+			/*
+			if(entry.getKey().equals("password")){
+				userLoginCredentialsBean.setPassword(entry.getValue());
+			}
+			*/
+		}
+		
+		return userLoginCredentialsBean;
+	}
+	
 	private UserAddressDetailsBean getUserAddressDetails(List<Map<String, String>> addressList) {
 		ArrayList<UserAddressBean> userAddressList = new ArrayList<UserAddressBean>(); 
 		

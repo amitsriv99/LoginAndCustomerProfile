@@ -71,7 +71,7 @@ public final class DatabaseConnection {
 		String DATABASE_DRIVER = "com.mysql.jdbc.Driver";
 		String DATABASE_URL = "jdbc:mysql://localhost:3306/{0}";
 	    String DATABASE_USERNAME = "bGFiaXp5X3VzZXI=";
-	    String DATABASE_PASSWORD = "bGFiaXp5X3VzZXJfMDA3";
+	    String DATABASE_PASSWORD = "bGFiaXp5X3VzZXIwMDc=";
 
 	    System.setProperty("environ", "local");
 	    EncryptionDecryptionUtils encryptionDecryptionUtils = new EncryptionDecryptionUtils();

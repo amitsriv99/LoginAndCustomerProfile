@@ -65,53 +65,63 @@ public class UserProfileDaoManager {
 		PreparedStatement preparedStatement = null;
 		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
 
-		try{
-			connection.setAutoCommit(false);
-			String sqlQuery = "INSERT INTO user_profile_tb (user_id, title, first_name, middle_name, last_name, "
-									+ "sex, date_of_birth, marital_status, profile_picture, is_primary_profile) "
-									+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-			
-			preparedStatement = connection.prepareStatement(sqlQuery);
-			
-			preparedStatement.setNString(1, userId);
-			preparedStatement.setNString(2, title);
-			preparedStatement.setNString(3, firstName);
-			preparedStatement.setNString(4, middleName);
-			preparedStatement.setNString(5, lastName);
-			preparedStatement.setNString(6, sex);
-			
-			java.sql.Timestamp dateOfBirthTS = new java.sql.Timestamp(dateOfBirth.getTime());
-			preparedStatement.setTimestamp(7, dateOfBirthTS);
-			
-			preparedStatement.setNString(8, maritalStatus);
-			preparedStatement.setNString(9, profilePictureUrl);
-			preparedStatement.setBoolean(10, isPrimaryProfile);
-			
-			preparedStatement.execute();
-			connection.commit();
-			
-			userProfileMap = getUserProfileDetails(userId, isPrimaryProfile);
-		}catch(SQLException e){
-			try{
-				connection.rollback();
-			} catch (SQLException e1) {
-				logger.warn(e1.getMessage());
-			}
-			throw new QueryExecutionException(e);
-		}catch(DataNotFoundException e){
-			logger.error(e.getMessage());
-			throw new QueryExecutionException(e);
-		}finally{
-			try {
-				preparedStatement.close();
-				connection.setAutoCommit(true);
+		boolean userProfileExists = true;
 
-				connection.close();
-			} catch (SQLException e) {
-				logger.warn(e.getMessage());
+		try {
+			userProfileMap = getUserProfileDetails(userId, isPrimaryProfile);
+		} catch (DataNotFoundException e2) {
+			userProfileExists = false;
+		}
+		
+		if(!userProfileExists){
+			try{
+				connection.setAutoCommit(false);
+				String sqlQuery = "INSERT INTO user_profile_tb (user_id, title, first_name, middle_name, last_name, "
+										+ "sex, date_of_birth, marital_status, profile_picture, is_primary_profile) "
+										+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+				
+				preparedStatement = connection.prepareStatement(sqlQuery);
+				
+				preparedStatement.setNString(1, userId);
+				preparedStatement.setNString(2, title);
+				preparedStatement.setNString(3, firstName);
+				preparedStatement.setNString(4, middleName);
+				preparedStatement.setNString(5, lastName);
+				preparedStatement.setNString(6, sex);
+				
+				java.sql.Timestamp dateOfBirthTS = new java.sql.Timestamp(dateOfBirth.getTime());
+				preparedStatement.setTimestamp(7, dateOfBirthTS);
+				
+				preparedStatement.setNString(8, maritalStatus);
+				preparedStatement.setNString(9, profilePictureUrl);
+				preparedStatement.setBoolean(10, isPrimaryProfile);
+				
+				preparedStatement.execute();
+				connection.commit();
+				
+				userProfileMap = getUserProfileDetails(userId, isPrimaryProfile);
+			}catch(SQLException e){
+				try{
+					connection.rollback();
+				} catch (SQLException e1) {
+					logger.warn(e1.getMessage());
+				}
+				throw new QueryExecutionException(e);
+			}catch(DataNotFoundException e){
+				logger.error(e.getMessage());
+				throw new QueryExecutionException(e);
+			}finally{
+				try {
+					preparedStatement.close();
+					connection.setAutoCommit(true);
+	
+					connection.close();
+				} catch (SQLException e) {
+					logger.warn(e.getMessage());
+				}
+				preparedStatement = null;
+				connection = null;
 			}
-			preparedStatement = null;
-			connection = null;
 		}
 		
 		return userProfileMap;
@@ -130,7 +140,7 @@ public class UserProfileDaoManager {
 		try{
 			String sqlQuery = "SELECT user_tb.user_id AS user_id, title, first_name, "
 								+ "middle_name, last_name, sex, date_of_birth, marital_status, "
-								+ "profile_picture, is_primary_profile, email_id, password, status "
+								+ "profile_picture, is_primary_profile, email_id, password, COALESCE(status, 'active') AS status "
 								+ "FROM user_profile_tb, user_tb "
 								+ "WHERE user_tb.user_id = ? AND is_primary_profile = ? "
 								+ "AND (status IS NULL OR status <> 'DELETED')"; 	

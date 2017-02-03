@@ -371,7 +371,7 @@ public class UserLoginDaoManager {
 		}
 		
 		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
-		Statement statement = null;
+
 		try{
 			connection.setAutoCommit(false);
 			Map<String, String> tokenMap = validateToken(clientId, oauthToken, false);
@@ -392,12 +392,10 @@ public class UserLoginDaoManager {
 		}finally{
 			try {
 				connection.setAutoCommit(true);
-				statement.close();
 				connection.close();
 			} catch (SQLException e) {
 				logger.warn(e.getMessage());
 			}
-			statement = null;
 			connection = null;
 		}
 	}

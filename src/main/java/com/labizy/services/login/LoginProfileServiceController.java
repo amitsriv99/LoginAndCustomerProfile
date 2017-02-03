@@ -26,8 +26,9 @@ import com.labizy.services.login.beans.UserProfileDetailsResultBean;
 import com.labizy.services.login.dao.adapter.UserLoginDaoAdapter;
 import com.labizy.services.login.dao.adapter.UserProfileDaoAdapter;
 import com.labizy.services.login.exceptions.ServiceException;
+import com.labizy.services.login.exceptions.UserAuthenticationException;
+import com.labizy.services.login.exceptions.UserDoesNotExistException;
 import com.labizy.services.login.utils.CacheFactory;
-import com.labizy.services.login.utils.Constants;
 
 @RestController
 public class LoginProfileServiceController {
@@ -72,14 +73,12 @@ public class LoginProfileServiceController {
 		long startTimestamp = System.currentTimeMillis();
 		
 		AuthenticationBean authBean = null;
-		String cacheKey = null;
-		String cacheKeyType = null;
 		
 		String errorCode = "" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		String errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
 		
 		try {
-			if((!"issue".equals(action)) || (!"validate".equals(action)) || (!"expire".equals(action))){
+			if((!"issue".equals(action)) && (!"validate".equals(action)) && (!"expire".equals(action))){
 				errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
 				errorDescription = "Unknown action. Please check the service api document to know the appropriate action that is supported.";
 				
@@ -97,6 +96,11 @@ public class LoginProfileServiceController {
 					authBean = userLoginDaoAdapter.expireOauthToken(userCredentialsBean, oauthToken);
 				}
 			}
+		} catch (UserAuthenticationException e){
+			authBean = new AuthenticationBean();
+		
+			authBean.setErrorCode("" + HttpServletResponse.SC_UNAUTHORIZED);
+			authBean.setErrorDescription("User is unauthorized to access the authentication token..");
 		} catch (Exception e){
 			appLogger.error("Caught Unknown Exception {}", e);
 			errorDescription = errorDescription + "\n" + e.getMessage();
@@ -108,8 +112,12 @@ public class LoginProfileServiceController {
 				
 				httpServletResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			}else{
-				if( StringUtils.isEmpty(authBean.getToken() )){
-					httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+				if(StringUtils.isEmpty(authBean.getToken())){
+					if(StringUtils.isEmpty(authBean.getErrorCode())){
+						httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+					}else{
+						httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+					}
 				}else{
 					httpServletResponse.setStatus(HttpServletResponse.SC_OK);
 				}
@@ -156,7 +164,6 @@ public class LoginProfileServiceController {
 					userId = userProfileDaoAdapter.createUser(userProfileDetailsBean.getUserLogin());
 					UserCredentialsBean userCredentials = new UserCredentialsBean();
 					userCredentials.setEmailId(userProfileDetailsBean.getUserLogin().getEmailId());
-					userCredentials.setStatus("ACTIVE");
 					userProfileDetailsResultBean.setUserLogin(userCredentials);
 				}
 				
@@ -221,6 +228,12 @@ public class LoginProfileServiceController {
 			try {
 				userProfileDetailsResultBean = userProfileDaoAdapter.getUserProfileDetails(id);
 				httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+			} catch(UserDoesNotExistException e){
+				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+				userProfileDetailsResultBean.setErrorCode("" + HttpServletResponse.SC_NOT_FOUND);
+				userProfileDetailsResultBean.setErrorDescription("User either doesn't exist or has been deleted.");
+				
+				httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
 			} catch (ServiceException e) {
 				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
 				userProfileDetailsResultBean.setErrorCode("" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -285,20 +298,31 @@ public class LoginProfileServiceController {
 		return userProfileDetailsResultBean;
 	}
 
-	@RequestMapping(value = "/user-profiles/v1/delete/{id}", method = RequestMethod.GET, produces="application/json")
+	@RequestMapping(value = "/user-profiles/v1/delete/{id}", method = RequestMethod.DELETE, produces="application/json")
 	public @ResponseBody StatusBean deleteUserAndProfile(@PathVariable("id") String id, @RequestParam MultiValueMap<String, String> requestParams,
-															@RequestHeader(value="X-OAUTH-TOKEN", required = false) String oauthToken,
+																@RequestBody(required = false) UserCredentialsBean userCredentialsBean, 												
+																@RequestHeader(value="X-OAUTH-TOKEN", required = false) String oauthToken,
 																final HttpServletResponse httpServletResponse){
 		if(appLogger.isDebugEnabled()){
 			appLogger.debug("Inside {}", "LoginProfileServiceController.deleteUserProfile()");
 		}
+		
 		long startTimestamp = System.currentTimeMillis();		
+		
 		StatusBean statusBean = null;
 		
 		try{
+			AuthenticationBean authBean = userLoginDaoAdapter.validateOauthToken(userCredentialsBean, oauthToken);
+			
 			userProfileDaoAdapter.deleteUserAndProfile(id);
 			httpServletResponse.setStatus(HttpServletResponse.SC_OK);
-		}catch(ServiceException e){
+		} catch (UserAuthenticationException e){
+			statusBean = new StatusBean();
+			statusBean.setStatusCode("" + HttpServletResponse.SC_UNAUTHORIZED);
+			statusBean.setStatusMessage("User is unauthorized to access the authentication token..");
+		
+			httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+		} catch(ServiceException e){
 			statusBean = new StatusBean();
 			statusBean.setStatusCode("" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			statusBean.setStatusMessage(e.getMessage());

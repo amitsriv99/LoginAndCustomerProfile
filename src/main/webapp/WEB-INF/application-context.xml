@@ -32,7 +32,7 @@
 			<property name="databaseDriver" value="com.mysql.jdbc.Driver"/>
 			<property name="databaseUrl" value="jdbc:mysql://localhost:3306/{0}"/>
 			<property name="databaseUser" value="bGFiaXp5X3VzZXI="/>
-			<property name="databasePassword" value="bGFiaXp5X3VzZXJfMDA3"/>
+			<property name="databasePassword" value="bGFiaXp5X3VzZXIwMDc="/>
 		</bean>
 		<bean id="TestProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
 		<bean id="PPEProperties" class="com.labizy.services.login.beans.PropertiesBean"/>
@@ -41,7 +41,7 @@
 			<property name="databaseDriver" value="com.mysql.jdbc.Driver"/>
 			<property name="databaseUrl" value="jdbc:mysql://localhost:3306/{0}"/>
 			<property name="databaseUser" value="bGFiaXp5X3VzZXI="/>
-			<property name="databasePassword" value="bGFiaXp5X3VzZXJfMDA3"/>
+			<property name="databasePassword" value="bGFiaXp5X3VzZXIwMDc="/>
 		</bean>
 		
 		<bean id="PropertiesBuilder" class="com.labizy.services.login.builder.PropertiesBuilder">
@@ -65,6 +65,7 @@
 		<bean id="UserLoginDaoManager" class="com.labizy.services.login.dao.manager.UserLoginDaoManager">
 			<property name="commonUtils" ref="CommonUtils"/>
 			<property name="databaseName" ref="UserLoginDatabaseName"/>
+			<property name="databaseConnection" ref="DatabaseConnection"/>
 			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
 		</bean>
 
@@ -72,6 +73,7 @@
 		<bean id="UserProfileDaoManager" class="com.labizy.services.login.dao.manager.UserProfileDaoManager">
 			<property name="commonUtils" ref="CommonUtils"/>
 			<property name="databaseName" ref="UserProfileDatabaseName"/>
+			<property name="databaseConnection" ref="DatabaseConnection"/>
 			<property name="encryptionDecryptionUtils" ref="EncryptionDecryptionUtils"/>
 		</bean>
 

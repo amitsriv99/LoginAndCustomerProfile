@@ -2,6 +2,8 @@ package com.labizy.services.login.dao.adapter;
 
 import java.util.Map;
 
+import org.springframework.util.StringUtils;
+
 import com.labizy.services.login.beans.AuthenticationBean;
 import com.labizy.services.login.beans.UserCredentialsBean;
 import com.labizy.services.login.dao.manager.UserLoginDaoManager;
@@ -12,6 +14,7 @@ import com.labizy.services.login.exceptions.DatabaseConnectionException;
 import com.labizy.services.login.exceptions.QueryExecutionException;
 import com.labizy.services.login.exceptions.ServiceException;
 import com.labizy.services.login.exceptions.UniqueKeyViolationException;
+import com.labizy.services.login.exceptions.UserAuthenticationException;
 import com.labizy.services.login.utils.CommonUtils;
 
 public class UserLoginDaoAdapter {
@@ -19,6 +22,32 @@ public class UserLoginDaoAdapter {
 	private UserProfileDaoManager userProfileDaoManager;
 	private CommonUtils commonUtils;
 
+	private AuthenticationBean populateAuthenticationBean(Map<String, String> resultMap) {
+		AuthenticationBean authenticationBean = new AuthenticationBean();
+		
+		if((resultMap == null) || (resultMap.isEmpty())){
+			authenticationBean.setToken(commonUtils.getUniqueGeneratedId("OAUTH", "U"));
+			authenticationBean.setTokenType("user");
+			
+			authenticationBean.setExpires("3600");
+			authenticationBean.setGrantType("basic");
+		}else{
+			authenticationBean.setClientId(resultMap.get("clientId"));
+			authenticationBean.setExpires(null);
+			
+			boolean isGuestUser = Boolean.parseBoolean(resultMap.get("isGuestUser"));
+			String grantType = (isGuestUser) ? "basic" : "advanced";
+			authenticationBean.setGrantType(grantType);
+			boolean isInternalUser = Boolean.parseBoolean(resultMap.get("isInternalUser"));
+			authenticationBean.setGrantType((isInternalUser) ? "priviledged" : grantType);
+			
+			authenticationBean.setToken(resultMap.get("oauthToken"));
+			authenticationBean.setTokenType(resultMap.get("tokenType"));
+		}
+		
+		return authenticationBean;
+	}
+	
 	public CommonUtils getCommonUtils() {
 		return commonUtils;
 	}
@@ -35,32 +64,43 @@ public class UserLoginDaoAdapter {
 		this.userLoginDaoManager = userLoginDaoManager;
 	}
 
-	public AuthenticationBean issueOauthToken(UserCredentialsBean userCredentialsBean) throws ServiceException {
+	public AuthenticationBean issueOauthToken(UserCredentialsBean userCredentialsBean) throws ServiceException, UserAuthenticationException{
 		AuthenticationBean authenticationBean = null;
 		Map<String, String> resultMap = null;
 		
-		try {
-			resultMap = userLoginDaoManager.issueToken(userCredentialsBean.getEmailId(), userCredentialsBean.getPassword());
-		} catch (Exception e) {
-			throw new ServiceException(e);
+		if(userCredentialsBean != null){
+			try {
+				resultMap = userLoginDaoManager.issueToken(userCredentialsBean.getEmailId(), userCredentialsBean.getPassword());
+			} catch(DataIntegrityException e){
+				throw new UserAuthenticationException(e);
+			}catch (Exception e) {
+				throw new ServiceException(e);
+			}
 		}
-
+		
 		authenticationBean = populateAuthenticationBean(resultMap);
 		
 		return authenticationBean;
 	}
 
-	public AuthenticationBean validateOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException {
+	public AuthenticationBean validateOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException, UserAuthenticationException {
 		AuthenticationBean authenticationBean = null;
 		String clientId = null;
+		
+		if((userCredentialsBean == null) && (StringUtils.isEmpty(oauthToken))){
+			throw new UserAuthenticationException("User is unauthorized to access the authentication token..");
+		}
+		
 		try{
-			if(oauthToken == null){
+			if(StringUtils.isEmpty(oauthToken)){
 				Map<String, String> userMap = userProfileDaoManager.getUserId(userCredentialsBean.getEmailId(), userCredentialsBean.getPassword());
 				clientId = userMap.get("clientId");
 			}
 			Map<String, String> resultMap = userLoginDaoManager.validateToken(clientId, oauthToken, true);
-
+			
 			authenticationBean = populateAuthenticationBean(resultMap);
+		}catch(DataNotFoundException e){
+			throw new UserAuthenticationException(e);
 		}catch(Exception e){
 			throw new ServiceException(e);
 		}
@@ -68,30 +108,17 @@ public class UserLoginDaoAdapter {
 		return authenticationBean;
 	}
 
-	private AuthenticationBean populateAuthenticationBean(Map<String, String> resultMap) {
-		AuthenticationBean authenticationBean = new AuthenticationBean();
-		
-		authenticationBean.setClientId(resultMap.get("clientId"));
-		authenticationBean.setExpires(null);
-		
-		boolean isGuestUser = Boolean.parseBoolean(resultMap.get("isGuestUser"));
-		String grantType = (isGuestUser) ? "basic" : "advanced";
-		authenticationBean.setGrantType(grantType);
-		boolean isInternalUser = Boolean.parseBoolean(resultMap.get("isInternalUser"));
-		authenticationBean.setGrantType((isInternalUser) ? "priviledged" : grantType);
-		
-		authenticationBean.setToken(resultMap.get("oauthToken"));
-		authenticationBean.setTokenType(resultMap.get("tokenType"));
-		
-		return authenticationBean;
-	}
-
-	public AuthenticationBean expireOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException {
+	public AuthenticationBean expireOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException, UserAuthenticationException {
 		AuthenticationBean authenticationBean = null;
 		String clientId = null;
+
+		if((userCredentialsBean == null) && (StringUtils.isEmpty(oauthToken))){
+			throw new UserAuthenticationException("User is unauthorized to access the authentication token..");
+		}
+
 		try{
 			if(oauthToken == null){
-				Map<String, String> userMap = userProfileDaoManager.getUserId(userCredentialsBean.getEmailId(), null);
+				Map<String, String> userMap = userProfileDaoManager.getUserId(userCredentialsBean.getEmailId(), userCredentialsBean.getPassword());
 				clientId = userMap.get("clientId");
 			}
 			userLoginDaoManager.expireToken(clientId, oauthToken);
@@ -99,10 +126,10 @@ public class UserLoginDaoAdapter {
 			authenticationBean = new AuthenticationBean();
 			authenticationBean.setClientId(clientId);
 			authenticationBean.setToken(null);
+			authenticationBean.setTokenType("user");
+			authenticationBean.setGrantType("basic");
 		}catch(DataNotFoundException e){
-			authenticationBean = new AuthenticationBean();
-			authenticationBean.setClientId(clientId);
-			authenticationBean.setToken(null);
+			throw new UserAuthenticationException(e);
 		}catch(Exception e){
 			throw new ServiceException(e);
 		}
