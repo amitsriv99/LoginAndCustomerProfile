@@ -29,11 +29,16 @@ public class UserLoginDaoManager {
 	private static Logger logger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
 	
 	private CommonUtils commonUtils;
+	private EncryptionDecryptionUtils encryptionDecryptionUtils;
 	private String databaseName;
 	private UserProfileDaoManager userProfileDaoManager;
 	private DatabaseConnection databaseConnection;
 	
-	
+	public void setEncryptionDecryptionUtils(
+			EncryptionDecryptionUtils encryptionDecryptionUtils) {
+		this.encryptionDecryptionUtils = encryptionDecryptionUtils;
+	}
+
 	public void setDatabaseConnection(DatabaseConnection databaseConnection) {
 		this.databaseConnection = databaseConnection;
 	}
@@ -363,6 +368,74 @@ public class UserLoginDaoManager {
 		return oauthResultMap;
 	}
 	
+	public Map<String, String> resetToken(String emailId)
+			throws DataNotFoundException, DataIntegrityException, QueryExecutionException, DatabaseConnectionException {
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.resetToken(String)");
+		}
+		
+		Map<String, String> oauthResultMap = null;
+		
+		boolean isRealUser = false;
+		boolean isGuestUser = false;
+		String password = null;
+		
+		Map<String, String> userMap = userProfileDaoManager.getUserId(emailId, null);
+		String userId = userMap.get("userId");
+
+		isRealUser = Boolean.parseBoolean(userMap.get("isRealUser"));
+		isGuestUser = Boolean.parseBoolean(userMap.get("isGuestUser"));
+		
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
+		
+		try{
+			connection.setAutoCommit(false);
+			deleteOauthRecords(userId, connection);
+			
+			String oauthToken = commonUtils.getUniqueGeneratedId("OAUTH", ((isRealUser) ? "U" : "S"));
+			String oauthTokenType = (isRealUser) ? "user" : "service";
+			insertOauthRecords(userId, oauthToken, oauthTokenType, connection);
+			
+			password = commonUtils.generateUniquePassword();
+			String encodedPassword = encryptionDecryptionUtils.encodeToBase64String(password);
+			
+			userProfileDaoManager.updateUserPassword(userId, emailId, encodedPassword, connection);
+			
+			userProfileDaoManager.updateUserStatus(userId, "reset", connection);
+			
+			connection.commit();
+		}catch(DataNotFoundException e){
+			throw new QueryExecutionException(e);
+		}catch(SQLException e){
+			try{
+				userId = null;
+				connection.rollback();
+			} catch (SQLException e1) {
+				logger.warn(e1.getMessage());
+			}
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				connection.setAutoCommit(true);
+				connection.close();
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
+			connection = null;
+		}
+		
+		try {
+			oauthResultMap = validateToken(userId, null, false);
+			oauthResultMap.put("comments", commonUtils.getMessageFromTemplate("The password has been reset to {0} . Please re-login and reset your password..", new String[] { password }));
+		} catch (DataNotFoundException e) {
+			logger.error(e.getMessage());
+			throw new DataIntegrityException(e);
+		}
+		
+		return oauthResultMap;
+	}
+
 	public void expireToken(String clientId, String oauthToken) 
 			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 

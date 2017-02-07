@@ -67,6 +67,7 @@
 			<property name="databaseName" ref="UserLoginDatabaseName"/>
 			<property name="databaseConnection" ref="DatabaseConnection"/>
 			<property name="userProfileDaoManager" ref="UserProfileDaoManager"/>
+			<property name="encryptionDecryptionUtils" ref="EncryptionDecryptionUtils"/>
 		</bean>
 
 		<bean id="UserProfileDatabaseName" class="java.lang.String"><constructor-arg value="labizy_user_db" /></bean>

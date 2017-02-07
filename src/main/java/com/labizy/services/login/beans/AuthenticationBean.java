@@ -10,6 +10,7 @@ public class AuthenticationBean {
 	private String clientId;
 	private String grantType;
 	private String tokenType;
+	private String comments;
 	private String errorCode;
 	private String errorDescription;
 
@@ -42,6 +43,12 @@ public class AuthenticationBean {
 	}
 	public void setTokenType(String tokenType) {
 		this.tokenType = tokenType;
+	}
+	public String getComments() {
+		return comments;
+	}
+	public void setComments(String comments) {
+		this.comments = comments;
 	}
 	public String getErrorCode() {
 		return errorCode;

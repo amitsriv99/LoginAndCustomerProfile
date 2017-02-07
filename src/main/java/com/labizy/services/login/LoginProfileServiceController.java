@@ -78,7 +78,7 @@ public class LoginProfileServiceController {
 		String errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
 		
 		try {
-			if((!"issue".equals(action)) && (!"validate".equals(action)) && (!"expire".equals(action))){
+			if((!"issue".equals(action)) && (!"validate".equals(action)) && (!"expire".equals(action) && (!"reset".equals(action)))){
 				errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
 				errorDescription = "Unknown action. Please check the service api document to know the appropriate action that is supported.";
 				
@@ -92,6 +92,10 @@ public class LoginProfileServiceController {
 					authBean = userLoginDaoAdapter.validateOauthToken(userCredentialsBean, oauthToken);
 				}
 				
+				if("reset".equals(action)){
+					authBean = userLoginDaoAdapter.resetOauthToken(userCredentialsBean, oauthToken);
+				}
+
 				if("expire".equals(action)){
 					authBean = userLoginDaoAdapter.expireOauthToken(userCredentialsBean, oauthToken);
 				}
@@ -215,6 +219,16 @@ public class LoginProfileServiceController {
 		String errorCode = "" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		String errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
 	
+		boolean isPrimaryProfile = true;
+		String primaryProfile = requestParams.getFirst("primary");
+		if(! StringUtils.isEmpty(primaryProfile)){
+			try{
+				isPrimaryProfile = Boolean.parseBoolean(primaryProfile);
+			}catch(Exception e){
+				//Assume it is requested for primary profile..
+			}
+		}
+		
 		if(StringUtils.isEmpty(id)){
 			errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
 			errorDescription = "User id is null. User and/or its profile cannot be retrieved.";
@@ -226,7 +240,7 @@ public class LoginProfileServiceController {
 			httpServletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 		}else{
 			try {
-				userProfileDetailsResultBean = userProfileDaoAdapter.getUserProfileDetails(id);
+				userProfileDetailsResultBean = userProfileDaoAdapter.getUserProfileDetails(id, isPrimaryProfile);
 				httpServletResponse.setStatus(HttpServletResponse.SC_OK);
 			} catch(UserDoesNotExistException e){
 				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
@@ -278,7 +292,59 @@ public class LoginProfileServiceController {
 			errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
 			
 			try {
-				userProfileDetailsResultBean = userProfileDaoAdapter.updateUserAndProfile(userProfileDetailsBean);
+				String userId = null;
+				boolean isPrimaryProfile = true;
+				
+				boolean passwordUpdateExists = (userProfileDetailsBean.getUserLogin() != null);
+				boolean profileUpdateExists = (userProfileDetailsBean.getUserProfile() != null);
+				
+				AuthenticationBean authBean = null;
+				
+				if(passwordUpdateExists){
+					authBean = userLoginDaoAdapter.validateOauthToken(null, oauthToken);
+					userId = authBean.getClientId();
+					
+					if(("basic".equals(authBean.getGrantType())) && ("user".equals(authBean.getTokenType()))){
+						if(userProfileDetailsBean.getUserProfile() == null){
+							UserProfileBean userProfileBean = new UserProfileBean();
+							userProfileBean.setUserId(userId);
+							
+							userProfileDetailsBean.setUserProfile(userProfileBean);
+						}else{
+							userProfileDetailsBean.getUserProfile().setUserId(userId);
+						}
+						
+						userProfileDaoAdapter.updateUserPassword(userProfileDetailsBean);
+					}
+				}
+				
+				if(profileUpdateExists){
+					userId = userProfileDetailsBean.getUserProfile().getUserId();
+					try{
+						isPrimaryProfile = Boolean.parseBoolean(userProfileDetailsBean.getUserProfile().getIsPrimaryProfile());
+					} catch(Exception e){
+						//Assume it's for the primary profile
+						isPrimaryProfile = true;
+					}
+					userProfileDaoAdapter.updateUserProfile(userProfileDetailsBean);
+					httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+				}
+				
+				userProfileDetailsResultBean = userProfileDaoAdapter.getUserProfileDetails(userId, isPrimaryProfile);
+			} catch (UserDoesNotExistException e){
+				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+				
+				userProfileDetailsResultBean.setErrorCode("" + HttpServletResponse.SC_NOT_FOUND);
+				userProfileDetailsResultBean.setErrorDescription("User either doesn't exist or has been deleted..");
+				
+				httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+			} catch (UserAuthenticationException e){
+				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+				
+				userProfileDetailsResultBean.setErrorCode("" + HttpServletResponse.SC_UNAUTHORIZED);
+				userProfileDetailsResultBean.setErrorDescription("User is unauthorized to access the authentication token..");
+				
+				httpServletResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			} catch (ServiceException e){
 				appLogger.error("Caught Unknown Exception {}", e);
 				errorDescription = errorDescription + "\n" + e.getMessage();

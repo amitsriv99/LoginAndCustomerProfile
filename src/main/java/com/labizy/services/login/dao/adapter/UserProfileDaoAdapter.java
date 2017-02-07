@@ -24,6 +24,7 @@ import com.labizy.services.login.exceptions.ServiceException;
 import com.labizy.services.login.exceptions.UniqueKeyViolationException;
 import com.labizy.services.login.exceptions.UserDoesNotExistException;
 import com.labizy.services.login.utils.CommonUtils;
+import com.labizy.services.login.utils.FieldComparator;
 
 public class UserProfileDaoAdapter {
 	private static Logger appLogger = LoggerFactory.getLogger("com.labizy.services.login.AppLogger");
@@ -171,23 +172,86 @@ public class UserProfileDaoAdapter {
 		return createdAddressDetails;
 	}
 	
-	public UserProfileDetailsResultBean updateUserAndProfile(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException {
+	public UserProfileDetailsResultBean updateUserPassword(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException, UserDoesNotExistException {
+		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
+		Map<String, String> userProfileMap = null;
+		
+		if(appLogger.isDebugEnabled()){
+			appLogger.debug("Inside {}", "UserProfileDaoAdapter.updateUserPassword()");
+		}
+		
+		String userId = userProfileDetailsBean.getUserProfile().getUserId();
+		String emailId = userProfileDetailsBean.getUserLogin().getEmailId();
+		String password = userProfileDetailsBean.getUserLogin().getPassword();
+		
+		try {
+			userProfileMap = userProfileDaoManager.updateUserPassword(userId, emailId, password, null);
+		} catch (DataNotFoundException e) {
+			throw new UserDoesNotExistException(e);			
+		} catch (Exception e) {
+			throw new ServiceException(e);
+		}
+		
+		return userProfileDetailsResultBean;
+	}
+	
+	private boolean isUserProfileQualifiedForUpdate(UserProfileBean newUserProfileBean, UserProfileBean existingUserProfileBean){
+		boolean result = false;
+		
+		if((newUserProfileBean != null) && (existingUserProfileBean != null)){
+			FieldComparator fieldComparator = new FieldComparator();
+			List<String> fieldsToCompare = fieldComparator.getDeclaredFields(newUserProfileBean);
+			for (String field : fieldsToCompare) {
+				boolean isFieldValueSame = fieldComparator.isFieldValueSame(field, newUserProfileBean, existingUserProfileBean);
+				
+				if(! isFieldValueSame){
+					result = true;
+					break;
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	private boolean compareAndUpdateProfileDetails(UserProfileDetailsBean newUserProfileDetailsBean, UserProfileDetailsResultBean existingUserProfileDetailsBean){
+		boolean isProfileUpdated = false;
+		
+		boolean isProfileQualifiedForUpdate = isUserProfileQualifiedForUpdate(newUserProfileDetailsBean.getUserProfile(), existingUserProfileDetailsBean.getUserProfile());
+		
+		return isProfileUpdated;
+	}
+	
+	public UserProfileDetailsResultBean updateUserProfile(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException, UserDoesNotExistException {
 		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
 		
 		if(appLogger.isDebugEnabled()){
 			appLogger.debug("Inside {}", "UserProfileDaoAdapter.updateUserAndProfile()");
 		}
 		
-		String userId = userProfileDetailsBean.getUserProfile().getUserId();
-		
-		if(appLogger.isInfoEnabled()){
-			appLogger.info("Updating UserId : {}", userId);
+		UserProfileBean userProfileBean = userProfileDetailsBean.getUserProfile();
+		String userId = userProfileBean.getUserId();
+		try {
+			UserProfileDetailsResultBean tempUserProfileDetailsResultBean = getUserProfileDetails(userId, true);
+			
+			boolean isProfileUpdated = compareAndUpdateProfileDetails(userProfileDetailsBean, tempUserProfileDetailsResultBean);
+			
+			if(! isProfileUpdated){
+				tempUserProfileDetailsResultBean = getUserProfileDetails(userId, false);
+				isProfileUpdated = compareAndUpdateProfileDetails(userProfileDetailsBean, tempUserProfileDetailsResultBean);
+			}
+			
+			if(appLogger.isDebugEnabled()){
+				appLogger.debug("Profile Updated : {}", isProfileUpdated);
+			}
+		} catch (Exception e) {
+			throw new ServiceException(e);
 		}
 		
 		return userProfileDetailsResultBean;
 	}
 	
-	public UserProfileDetailsResultBean getUserProfileDetails(String userId) throws ServiceException, UserDoesNotExistException {
+	public UserProfileDetailsResultBean getUserProfileDetails(String userId, boolean isPrimaryProfile) throws ServiceException, UserDoesNotExistException {
 		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
 		
 		if(appLogger.isDebugEnabled()){
@@ -202,7 +266,7 @@ public class UserProfileDaoAdapter {
 			if(appLogger.isDebugEnabled()){
 				appLogger.debug("Fetching User Profile Info..");
 			}
-			Map<String, String> userProfileMap = userProfileDaoManager.getUserProfileDetails(userId, true);
+			Map<String, String> userProfileMap = userProfileDaoManager.getUserProfileDetails(userId, isPrimaryProfile);
 			userProfileDetailsResultBean = new UserProfileDetailsResultBean();
 			UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
 			userProfileDetailsResultBean.setUserProfile(userProfileBean);

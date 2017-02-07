@@ -56,6 +56,10 @@ public class CommonUtils {
 		return new java.sql.Timestamp(calendar.getTimeInMillis());
 	}
 
+	public final String getCurrentTimestampAsString(){
+		return simpleDateTimeFormat.format(new java.util.Date(System.currentTimeMillis()));
+	}
+	
 	public final String getTimestampAsDateString(java.sql.Timestamp timestamp, boolean onlyDatePart){
 		if(timestamp == null){
 			return null;
@@ -65,6 +69,13 @@ public class CommonUtils {
 		calendar.setTimeInMillis(timestamp.getTime());
 		
 		return ((onlyDatePart) ? simpleDateFormat.format(calendar.getTime()) : simpleDateTimeFormat.format(calendar.getTime()));
+	}
+	
+	public final String generateUniquePassword(){
+		String password = null;
+		password = "Hell0L@bizy";
+		
+		return password;
 	}
 	
 	public final String getUniqueGeneratedId(String prefix, String suffix){
@@ -108,6 +119,7 @@ public class CommonUtils {
         return buffer.toString();
 	}
 
+	
 	public final String getMessageFromTemplate(String template, String[] placeHolderValues){
 		MessageFormat messageFormat = new MessageFormat(template);
 		String message = messageFormat.format(placeHolderValues);

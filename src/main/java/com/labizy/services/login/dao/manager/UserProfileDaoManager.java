@@ -212,6 +212,92 @@ public class UserProfileDaoManager {
 		return result;
 	}
 
+	public Map<String, String> getUserProfileDetails(String userId, String emailId)
+			throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		HashMap<String, String> result = null;
+		
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.getUserProfileDetails(String, boolean)");
+		}
+
+		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
+		PreparedStatement preparedStatement = null;
+		try{
+			String sqlQuery = "SELECT user_tb.user_id AS user_id, title, first_name, "
+								+ "middle_name, last_name, sex, date_of_birth, marital_status, "
+								+ "profile_picture, is_primary_profile, email_id, password, COALESCE(status, 'active') AS status "
+								+ "FROM user_profile_tb, user_tb "
+								+ "WHERE user_tb.user_id = ? AND email_id = ? "
+								+ "AND (status IS NULL OR status <> 'DELETED')"; 	
+			preparedStatement = connection.prepareStatement(sqlQuery);
+			preparedStatement.setNString(1, userId);
+			preparedStatement.setNString(2, emailId);
+			
+			ResultSet rs = preparedStatement.executeQuery();
+			result = new HashMap<String, String>();
+			while(rs.next()){
+				result.put("userId", userId);
+				
+				String title = rs.getNString("title");
+				result.put("title", title);
+				
+				String firstName = rs.getNString("first_name");
+				result.put("firstName", firstName);
+				
+				String middleName = rs.getNString("middle_name");
+				result.put("middleName", middleName);
+				
+				String lastName = rs.getNString("last_name");
+				result.put("lastName", lastName);
+				
+				String sex = rs.getNString("sex");
+				result.put("sex", sex);
+				
+				java.sql.Timestamp dateOfBirthTS = rs.getTimestamp("date_of_birth");
+				String dateOfBirth = commonUtils.getTimestampAsDateString(dateOfBirthTS, true);
+				result.put("dateOfBirth", dateOfBirth);
+				
+				String maritalStatus = rs.getNString("marital_status");
+				result.put("maritalStatus", maritalStatus);
+				
+				String profilePictureUrl = rs.getNString("profile_picture");
+				result.put("profilePictureUrl", profilePictureUrl);
+				
+				emailId = rs.getNString("email_id");
+				result.put("emailId", emailId);
+				
+				String password = rs.getNString("password");
+				result.put("password", password);
+				
+				String status = rs.getNString("status");
+				result.put("status", status);
+				
+				Boolean isPrimaryProfile = rs.getBoolean("is_primary_profile");
+				result.put("isPrimaryProfile", Boolean.toString(isPrimaryProfile));
+				
+				break;
+			}
+			
+			if(result.isEmpty()){
+				throw new DataNotFoundException("User either doesn't exist or has been deleted.");
+			}
+		}catch (SQLException e){
+			logger.error(e.getMessage());
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				preparedStatement.close();
+				connection.close();
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
+			preparedStatement = null;
+			connection = null;
+		}
+		
+		return result;
+	}
+
 	public Map<String, String> getUserPrimaryAddressDetails(String userId)
 									throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		HashMap<String, String> result = null;
@@ -1023,25 +1109,113 @@ public class UserProfileDaoManager {
 		return userContactMap;
 	}
 
-	private void updateUserStatus(String userId, String status) 
-					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+	public Map<String, String> updateUserPassword(String userId, String emailId, String password, Connection connection) 
+										throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		Map<String, String> userProfileMap = null;
+		
 		if(logger.isDebugEnabled()){
-			logger.debug("Inside {}", "UserProfileDaoManager.updateUserStatus(String, String)");
+			logger.debug("Inside {}", "UserProfileDaoManager.updateUserPassword(String, String, String, Connection)");
+		}
+		
+		boolean isNewConnection = (connection == null);
+		
+		Statement statement1 = null;
+		Statement statement2 = null;
+		
+		try{
+			if(isNewConnection){
+				connection = databaseConnection.getDatabaseConnection(databaseName);
+				connection.setAutoCommit(false);
+			}
+			
+			String decodedPassword = encryptionDecryptionUtils.decodeToBase64String(password);
+			String hashedPassword = encryptionDecryptionUtils.hashToBase64String(decodedPassword);
+			
+			String sqlQuery1 = "UPDATE user_tb SET password = '" + hashedPassword + "', status = null WHERE user_id = '" + userId + "'";
+			statement1 = connection.createStatement();
+
+			statement1.executeUpdate(sqlQuery1);
+			
+			String comments = "User unlocked @ " + commonUtils.getCurrentTimestampAsString();
+			
+			String sqlQuery2 = "UPDATE user_activity_tb SET locked_on = null, comments = '" + comments + "' WHERE user_id = '" + userId + "'";
+			
+			statement2 = connection.createStatement();
+
+			statement2.executeUpdate(sqlQuery2);
+			
+			if(isNewConnection){
+				connection.commit();
+			}	
+		}catch (SQLException e){
+			try {
+				if(isNewConnection){
+					connection.rollback();
+				}	
+			} catch (SQLException e1) {
+				logger.warn(e1.getMessage());
+			}
+			logger.error(e.getMessage());
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				if(statement1 != null){
+					statement1.close();
+					statement1 = null;
+				}
+				if(statement2 != null){
+					statement2.close();
+					statement2 = null;
+				}
+				if(isNewConnection){
+					connection.close();
+					connection = null;
+				}	
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
 		}
 
-		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
+		//userProfileMap = getUserProfileDetails(userId, emailId);
+		return userProfileMap;
+	}
+	
+	public void updateUserStatus(String userId, String status, Connection connection) 
+					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.updateUserStatus(String, String, Connection)");
+		}
+
+		boolean isNewConnection = (connection == null);
+		
 		Statement statement = null;
 		try{
-			connection.setAutoCommit(false);
-			String sqlQuery = "UPDATE user_tb SET status = '" + status + "' WHERE user_id = '" + userId + "'";
+			if(isNewConnection){
+				connection = databaseConnection.getDatabaseConnection(databaseName);
+				connection.setAutoCommit(false);
+			}
+			
+			String sqlQuery = null;
+			//String sqlQuery = "UPDATE user_tb SET status = ? WHERE user_id = ?";
 			//System.out.println("Update Query : " + sqlQuery);
 			statement = connection.createStatement();
 			
-			statement.execute(sqlQuery);
-			connection.commit();
+			if(StringUtils.isEmpty(status)){
+				sqlQuery = "UPDATE user_tb SET status = null WHERE user_id = '" + userId + "'";
+			}else{
+				sqlQuery = "UPDATE user_tb SET status = '" + status + "' WHERE user_id = '" + userId + "'";
+			}
+			
+			statement.executeUpdate(sqlQuery);
+			
+			if(isNewConnection){
+				connection.commit();
+			}
 		}catch (SQLException e){
 			try {
-				connection.rollback();
+				if(isNewConnection){
+					connection.rollback();
+				}
 			} catch (SQLException e1) {
 				logger.warn(e1.getMessage());
 			}
@@ -1050,12 +1224,15 @@ public class UserProfileDaoManager {
 		}finally{
 			try {
 				statement.close();
-				connection.close();
+				statement = null;
+				
+				if(isNewConnection){
+					connection.close();
+					connection = null;
+				}
 			} catch (SQLException e) {
 				logger.warn(e.getMessage());
 			}
-			statement = null;
-			connection = null;
 		}
 	}
 	
@@ -1064,9 +1241,9 @@ public class UserProfileDaoManager {
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.reactivateUser(String)");
 		}
-
-		updateUserStatus(userId, null);
-
+		
+		updateUserStatus(userId, null, null);
+		
 		if(logger.isDebugEnabled()){
 			logger.debug("User {} re-activated successfully..", userId);
 		}
@@ -1078,7 +1255,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.suspendUser(String)");
 		}
 
-		updateUserStatus(userId, "SUSPENDED");
+		updateUserStatus(userId, "SUSPENDED", null);
 
 		if(logger.isDebugEnabled()){
 			logger.debug("User {} suspended successfully..", userId);
@@ -1091,7 +1268,7 @@ public class UserProfileDaoManager {
 			logger.debug("Inside {}", "UserProfileDaoManager.suspendUser(String)");
 		}
 
-		updateUserStatus(userId, "DELETED");
+		updateUserStatus(userId, "DELETED", null);
 
 		if(logger.isDebugEnabled()){
 			logger.debug("User {} deleted successfully..", userId);

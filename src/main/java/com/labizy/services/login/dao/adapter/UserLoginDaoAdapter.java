@@ -10,10 +10,7 @@ import com.labizy.services.login.dao.manager.UserLoginDaoManager;
 import com.labizy.services.login.dao.manager.UserProfileDaoManager;
 import com.labizy.services.login.exceptions.DataIntegrityException;
 import com.labizy.services.login.exceptions.DataNotFoundException;
-import com.labizy.services.login.exceptions.DatabaseConnectionException;
-import com.labizy.services.login.exceptions.QueryExecutionException;
 import com.labizy.services.login.exceptions.ServiceException;
-import com.labizy.services.login.exceptions.UniqueKeyViolationException;
 import com.labizy.services.login.exceptions.UserAuthenticationException;
 import com.labizy.services.login.utils.CommonUtils;
 
@@ -43,6 +40,8 @@ public class UserLoginDaoAdapter {
 			
 			authenticationBean.setToken(resultMap.get("oauthToken"));
 			authenticationBean.setTokenType(resultMap.get("tokenType"));
+			
+			authenticationBean.setComments(resultMap.get("comments"));
 		}
 		
 		return authenticationBean;
@@ -108,6 +107,27 @@ public class UserLoginDaoAdapter {
 		return authenticationBean;
 	}
 
+	public AuthenticationBean resetOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException, UserAuthenticationException {
+		AuthenticationBean authenticationBean = null;
+		String clientId = null;
+		
+		if((userCredentialsBean == null) && (StringUtils.isEmpty(oauthToken))){
+			throw new UserAuthenticationException("User is unauthorized to access the authentication token..");
+		}
+		
+		try{
+			Map<String, String> resultMap = userLoginDaoManager.resetToken(userCredentialsBean.getEmailId());
+			
+			authenticationBean = populateAuthenticationBean(resultMap);
+		}catch(DataNotFoundException e){
+			throw new UserAuthenticationException(e);
+		}catch(Exception e){
+			throw new ServiceException(e);
+		}
+		
+		return authenticationBean;
+	}
+
 	public AuthenticationBean expireOauthToken(UserCredentialsBean userCredentialsBean, String oauthToken) throws ServiceException, UserAuthenticationException {
 		AuthenticationBean authenticationBean = null;
 		String clientId = null;
@@ -136,4 +156,5 @@ public class UserLoginDaoAdapter {
 		
 		return authenticationBean;
 	}
+	
 }
