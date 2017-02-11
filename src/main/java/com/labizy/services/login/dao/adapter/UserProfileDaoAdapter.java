@@ -71,7 +71,8 @@ public class UserProfileDaoAdapter {
 																		commonUtils.getStringAsDate(userProfileBean.getDateOfBirth()), 
 																		userProfileBean.getMaritalStatus(), 
 																		userProfileBean.getProfilePicture(), 
-																		Boolean.parseBoolean(userProfileBean.getIsPrimaryProfile()));
+																		Boolean.parseBoolean(userProfileBean.getIsPrimaryProfile()),
+																		null);
 			createdUserProfileBean = getUserProfileDetails(userProfileMap);
 		} catch (DataIntegrityException e) {
 			appLogger.error(e.getMessage());
@@ -192,6 +193,92 @@ public class UserProfileDaoAdapter {
 			throw new ServiceException(e);
 		}
 		
+		userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+		UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserProfile(userProfileBean);
+		
+		UserCredentialsBean userLoginCredentialsBean = getUserLoginDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserLogin(userLoginCredentialsBean);
+		
+		return userProfileDetailsResultBean;
+	}
+	
+	public UserProfileDetailsResultBean updateUserStatus(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException, UserDoesNotExistException {
+		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
+		Map<String, String> userProfileMap = null;
+		
+		if(appLogger.isDebugEnabled()){
+			appLogger.debug("Inside {}", "UserProfileDaoAdapter.updateUserStatus()");
+		}
+		
+		String userId = userProfileDetailsBean.getUserProfile().getUserId();
+		String status = userProfileDetailsBean.getUserLogin().getStatus();
+
+		try {
+			userProfileMap = userProfileDaoManager.updateUserStatus(userId, status, null);
+		} catch (DataNotFoundException e) {
+			throw new UserDoesNotExistException(e);			
+		} catch (Exception e) {
+			throw new ServiceException(e);
+		}
+		
+		userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+		UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserProfile(userProfileBean);
+		
+		UserCredentialsBean userLoginCredentialsBean = getUserLoginDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserLogin(userLoginCredentialsBean);
+		
+		return userProfileDetailsResultBean;
+	}
+
+	public UserProfileDetailsResultBean updateUserProfile(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException, UserDoesNotExistException {
+		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
+		Map<String, String> userProfileMap = null;
+		
+		if(appLogger.isDebugEnabled()){
+			appLogger.debug("Inside {}", "UserProfileDaoAdapter.updateUserProfile()");
+		}
+		
+		String userId = userProfileDetailsBean.getUserProfile().getUserId();
+		
+		boolean isPrimaryProfile = true;
+		try{
+			isPrimaryProfile = Boolean.parseBoolean(userProfileDetailsBean.getUserProfile().getIsPrimaryProfile());
+		} catch(Exception e){
+			//Assume it's for the primary profile
+			isPrimaryProfile = true;
+		}
+		
+		String title = userProfileDetailsBean.getUserProfile().getTitle();
+		String firstName = userProfileDetailsBean.getUserProfile().getFirstName();
+		String middleName = userProfileDetailsBean.getUserProfile().getMiddleName();
+		String lastName = userProfileDetailsBean.getUserProfile().getLastName();
+		
+		String dob = userProfileDetailsBean.getUserProfile().getDateOfBirth();
+		String dobFormat = userProfileDetailsBean.getUserProfile().getDateOfBirthFormat();
+		java.util.Date dateOfBirth = commonUtils.getStringAsDate(dob, dobFormat);
+		
+		String maritalStatus = userProfileDetailsBean.getUserProfile().getMaritalStatus();
+		String profilePictureUrl = userProfileDetailsBean.getUserProfile().getProfilePicture();
+		String sex = userProfileDetailsBean.getUserProfile().getSex();
+		
+		try {
+			userProfileMap = userProfileDaoManager.updateUserProfile(userId, title, firstName, middleName, lastName, dateOfBirth, 
+																			maritalStatus, profilePictureUrl, sex, isPrimaryProfile, null);
+		} catch (DataNotFoundException e) {
+			throw new UserDoesNotExistException(e);			
+		} catch (Exception e) {
+			throw new ServiceException(e);
+		}
+		
+		userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+		UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserProfile(userProfileBean);
+		
+		UserCredentialsBean userLoginCredentialsBean = getUserLoginDetails(userProfileMap);
+		userProfileDetailsResultBean.setUserLogin(userLoginCredentialsBean);
+		
 		return userProfileDetailsResultBean;
 	}
 	
@@ -222,35 +309,6 @@ public class UserProfileDaoAdapter {
 		return isProfileUpdated;
 	}
 	
-	public UserProfileDetailsResultBean updateUserProfile(UserProfileDetailsBean userProfileDetailsBean) throws ServiceException, UserDoesNotExistException {
-		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
-		
-		if(appLogger.isDebugEnabled()){
-			appLogger.debug("Inside {}", "UserProfileDaoAdapter.updateUserAndProfile()");
-		}
-		
-		UserProfileBean userProfileBean = userProfileDetailsBean.getUserProfile();
-		String userId = userProfileBean.getUserId();
-		try {
-			UserProfileDetailsResultBean tempUserProfileDetailsResultBean = getUserProfileDetails(userId, true);
-			
-			boolean isProfileUpdated = compareAndUpdateProfileDetails(userProfileDetailsBean, tempUserProfileDetailsResultBean);
-			
-			if(! isProfileUpdated){
-				tempUserProfileDetailsResultBean = getUserProfileDetails(userId, false);
-				isProfileUpdated = compareAndUpdateProfileDetails(userProfileDetailsBean, tempUserProfileDetailsResultBean);
-			}
-			
-			if(appLogger.isDebugEnabled()){
-				appLogger.debug("Profile Updated : {}", isProfileUpdated);
-			}
-		} catch (Exception e) {
-			throw new ServiceException(e);
-		}
-		
-		return userProfileDetailsResultBean;
-	}
-	
 	public UserProfileDetailsResultBean getUserProfileDetails(String userId, boolean isPrimaryProfile) throws ServiceException, UserDoesNotExistException {
 		UserProfileDetailsResultBean userProfileDetailsResultBean = null;
 		
@@ -266,7 +324,7 @@ public class UserProfileDaoAdapter {
 			if(appLogger.isDebugEnabled()){
 				appLogger.debug("Fetching User Profile Info..");
 			}
-			Map<String, String> userProfileMap = userProfileDaoManager.getUserProfileDetails(userId, isPrimaryProfile);
+			Map<String, String> userProfileMap = userProfileDaoManager.getUserProfileDetails(userId, isPrimaryProfile, null);
 			userProfileDetailsResultBean = new UserProfileDetailsResultBean();
 			UserProfileBean userProfileBean = getUserProfileDetails(userProfileMap);
 			userProfileDetailsResultBean.setUserProfile(userProfileBean);
@@ -331,9 +389,6 @@ public class UserProfileDaoAdapter {
 			}
 			if(entry.getKey().equals("profilePictureUrl")){
 				userProfileBean.setProfilePicture(entry.getValue());
-			}
-			if(entry.getKey().equals("status")){
-				userProfileBean.setStatus(entry.getValue());
 			}
 			if(entry.getKey().equals("isPrimaryProfile")){
 				userProfileBean.setTitle(entry.getValue());

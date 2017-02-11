@@ -49,6 +49,26 @@ public class CommonUtils {
 		return date;
 	}
 
+	public final java.util.Date getStringAsDate(String dateString, String format){
+		java.util.Date date = null;
+		
+		if(StringUtils.isEmpty(dateString)){
+			return null;
+		}
+		
+		try {
+			if(StringUtils.isEmpty(format)){
+				date = simpleDateFormat.parse(dateString);
+			}else{
+				date = new SimpleDateFormat(format).parse(dateString);
+			}
+		} catch (ParseException e) {
+			logger.error(e.toString());
+		}
+		
+		return date;
+	}
+
 	public final java.sql.Timestamp getCurrentDateTimeAsSqlTimestamp(){
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(System.currentTimeMillis());

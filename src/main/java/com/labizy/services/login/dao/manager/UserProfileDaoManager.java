@@ -55,7 +55,7 @@ public class UserProfileDaoManager {
 
 	public Map<String, String> createUserProfile(String userId, String title, String firstName, String middleName, 
 									String lastName, String sex, java.util.Date dateOfBirth, String maritalStatus, 
-										String profilePictureUrl, boolean isPrimaryProfile) 
+										String profilePictureUrl, boolean isPrimaryProfile, Connection connection) 
 			throws DataIntegrityException, QueryExecutionException, DatabaseConnectionException{
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.createUserProfile()");
@@ -63,19 +63,24 @@ public class UserProfileDaoManager {
 		
 		Map<String, String> userProfileMap = null;
 		PreparedStatement preparedStatement = null;
-		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
-
+		
+		boolean isNewConnection = (connection == null);
+		
 		boolean userProfileExists = true;
 
 		try {
-			userProfileMap = getUserProfileDetails(userId, isPrimaryProfile);
+			userProfileMap = getUserProfileDetails(userId, isPrimaryProfile, connection);
 		} catch (DataNotFoundException e2) {
 			userProfileExists = false;
 		}
 		
 		if(!userProfileExists){
 			try{
-				connection.setAutoCommit(false);
+				if(isNewConnection){
+					connection = databaseConnection.getDatabaseConnection(databaseName);
+					connection.setAutoCommit(false);
+				}
+				
 				String sqlQuery = "INSERT INTO user_profile_tb (user_id, title, first_name, middle_name, last_name, "
 										+ "sex, date_of_birth, marital_status, profile_picture, is_primary_profile) "
 										+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -97,12 +102,16 @@ public class UserProfileDaoManager {
 				preparedStatement.setBoolean(10, isPrimaryProfile);
 				
 				preparedStatement.execute();
-				connection.commit();
-				
-				userProfileMap = getUserProfileDetails(userId, isPrimaryProfile);
+
+				if(isNewConnection){
+					connection.commit();
+					userProfileMap = getUserProfileDetails(userId, isPrimaryProfile, connection);
+				}
 			}catch(SQLException e){
 				try{
-					connection.rollback();
+					if(isNewConnection){
+						connection.rollback();
+					}
 				} catch (SQLException e1) {
 					logger.warn(e1.getMessage());
 				}
@@ -113,29 +122,36 @@ public class UserProfileDaoManager {
 			}finally{
 				try {
 					preparedStatement.close();
-					connection.setAutoCommit(true);
+					preparedStatement = null;
+
+					if(isNewConnection){
+						connection.setAutoCommit(true);
 	
-					connection.close();
+						connection.close();
+						connection = null;
+					}
 				} catch (SQLException e) {
 					logger.warn(e.getMessage());
 				}
-				preparedStatement = null;
-				connection = null;
 			}
 		}
 		
 		return userProfileMap;
 	}
 
-	public Map<String, String> getUserProfileDetails(String userId, boolean isPrimaryProfile)
+	public Map<String, String> getUserProfileDetails(String userId, boolean isPrimaryProfile, Connection connection)
 									throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		HashMap<String, String> result = null;
 
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.getUserProfileDetails(String, boolean)");
 		}
+		boolean isNewConnection = (connection == null);
 
-		Connection connection = databaseConnection.getDatabaseConnection(databaseName);
+		if(isNewConnection){
+			connection = databaseConnection.getDatabaseConnection(databaseName);
+		}
+		
 		PreparedStatement preparedStatement = null;
 		try{
 			String sqlQuery = "SELECT user_tb.user_id AS user_id, title, first_name, "
@@ -201,12 +217,15 @@ public class UserProfileDaoManager {
 		}finally{
 			try {
 				preparedStatement.close();
-				connection.close();
+				preparedStatement = null;
+				
+				if(isNewConnection){
+					connection.close();
+					connection = null;
+				}
 			} catch (SQLException e) {
 				logger.warn(e.getMessage());
 			}
-			preparedStatement = null;
-			connection = null;
 		}
 		
 		return result;
@@ -1176,12 +1195,16 @@ public class UserProfileDaoManager {
 			}
 		}
 
-		//userProfileMap = getUserProfileDetails(userId, emailId);
+		userProfileMap = getUserProfileDetails(userId, emailId);
+		
 		return userProfileMap;
 	}
 	
-	public void updateUserStatus(String userId, String status, Connection connection) 
+	public Map<String, String> updateUserStatus(String userId, String status, Connection connection) 
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
+		
+		Map<String, String> userProfileMap = null;
+		
 		if(logger.isDebugEnabled()){
 			logger.debug("Inside {}", "UserProfileDaoManager.updateUserStatus(String, String, Connection)");
 		}
@@ -1207,10 +1230,12 @@ public class UserProfileDaoManager {
 			}
 			
 			statement.executeUpdate(sqlQuery);
-			
+
 			if(isNewConnection){
 				connection.commit();
 			}
+
+			userProfileMap = getUserProfileDetails(userId, true, connection);
 		}catch (SQLException e){
 			try {
 				if(isNewConnection){
@@ -1234,8 +1259,75 @@ public class UserProfileDaoManager {
 				logger.warn(e.getMessage());
 			}
 		}
+		
+		return userProfileMap;
 	}
 	
+	public Map<String, String> updateUserProfile(String userId, String title, String firstName, String middleName, String lastName, 
+													java.util.Date dateOfBirth, String maritalStatus, String profilePictureUrl, 
+														String sex, boolean isPrimaryProfile, Connection connection) 
+						throws DataNotFoundException, DataIntegrityException, QueryExecutionException, DatabaseConnectionException{
+
+		Map<String, String> userProfileMap = null;
+
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside {}", "UserProfileDaoManager.updateUserProfile(String, String, Connection)");
+		}
+		
+		boolean isNewConnection = (connection == null);
+		
+		Statement statement = null;
+		try{
+			if(isNewConnection){
+				connection = databaseConnection.getDatabaseConnection(databaseName);
+				connection.setAutoCommit(false);
+			}
+			
+			String sqlQuery = null;
+			statement = connection.createStatement();
+			
+			//Possibility of two profiles i.e. primary and non-primary. So, need to take care of both of them...
+			sqlQuery = "DELETE FROM user_profile_tb WHERE user_id = '" + userId + "'" + " AND is_primary_profile = " + isPrimaryProfile;
+			statement.executeUpdate(sqlQuery);
+			
+			sqlQuery = "UPDATE user_profile_tb SET is_primary_profile = " + !isPrimaryProfile + " WHERE user_id = '" + userId + "'";
+			statement.executeUpdate(sqlQuery);
+			
+			createUserProfile(userId, title, firstName, middleName, lastName, sex, dateOfBirth, 
+													maritalStatus,	profilePictureUrl, isPrimaryProfile, connection);
+						
+			if(isNewConnection){
+				connection.commit();
+			}
+
+			userProfileMap = getUserProfileDetails(userId, isPrimaryProfile, connection);
+		}catch (SQLException e){
+			try {
+				if(isNewConnection){
+					connection.rollback();
+				}
+			} catch (SQLException e1) {
+				logger.warn(e1.getMessage());
+			}
+			logger.error(e.getMessage());
+			throw new QueryExecutionException(e);
+		}finally{
+			try {
+				statement.close();
+				statement = null;
+				
+				if(isNewConnection){
+					connection.close();
+					connection = null;
+				}
+			} catch (SQLException e) {
+				logger.warn(e.getMessage());
+			}
+		}
+		
+		return userProfileMap;
+	}
+
 	public void reactivateUser(String userId) 
 					throws DataNotFoundException, QueryExecutionException, DatabaseConnectionException{
 		if(logger.isDebugEnabled()){

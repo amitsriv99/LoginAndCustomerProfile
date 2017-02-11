@@ -262,8 +262,9 @@ public class LoginProfileServiceController {
 		return userProfileDetailsResultBean;
 	}
 
-	@RequestMapping(value = "/user-profiles/v1/update/{id}", method = RequestMethod.PUT, produces="application/json", headers = "Accept=application/json")
-	public @ResponseBody UserProfileDetailsResultBean updateUserAndProfile(@PathVariable("id") String id, @RequestParam MultiValueMap<String, String> requestParams, 
+	@RequestMapping(value = "/user-profiles/v1/update/{updateItem}/{id}", method = RequestMethod.PUT, produces="application/json", headers = "Accept=application/json")
+	public @ResponseBody UserProfileDetailsResultBean updateUserAndProfile(@PathVariable("id") String id, @PathVariable("updateItem") String updateItem,  
+																			@RequestParam MultiValueMap<String, String> requestParams, 
 																			@RequestHeader(value="X-OAUTH-TOKEN", required = false) String oauthToken,
 																			@RequestBody(required = false) UserProfileDetailsBean userProfileDetailsBean, 
 																			final HttpServletResponse httpServletResponse){
@@ -278,9 +279,9 @@ public class LoginProfileServiceController {
 		String errorCode = "" + HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		String errorDescription = "Unknown Exception. Please check the HttpServiceProxy application logs for further details.";
 
-		if(userProfileDetailsBean == null){
+		if((StringUtils.isEmpty(id)) || (StringUtils.isEmpty(updateItem)) || (userProfileDetailsBean == null)){
 			errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
-			errorDescription = "Payload is null. User and/or its profile cannot be updated.";
+			errorDescription = "Either path params or payload is null. User and/or its profile cannot be updated.";
 
 			userProfileDetailsResultBean = new UserProfileDetailsResultBean();
 			userProfileDetailsResultBean.setErrorCode(errorCode);
@@ -293,44 +294,87 @@ public class LoginProfileServiceController {
 			
 			try {
 				String userId = null;
-				boolean isPrimaryProfile = true;
 				
-				boolean passwordUpdateExists = (userProfileDetailsBean.getUserLogin() != null);
-				boolean profileUpdateExists = (userProfileDetailsBean.getUserProfile() != null);
+				AuthenticationBean authBean = userLoginDaoAdapter.validateOauthToken(null, oauthToken);
+				userId = authBean.getClientId();
 				
-				AuthenticationBean authBean = null;
-				
-				if(passwordUpdateExists){
-					authBean = userLoginDaoAdapter.validateOauthToken(null, oauthToken);
-					userId = authBean.getClientId();
-					
-					if(("basic".equals(authBean.getGrantType())) && ("user".equals(authBean.getTokenType()))){
-						if(userProfileDetailsBean.getUserProfile() == null){
-							UserProfileBean userProfileBean = new UserProfileBean();
-							userProfileBean.setUserId(userId);
+				if("password".equals(updateItem)){
+					if(id.equals(userId)){
+						if(userProfileDetailsBean.getUserLogin() != null){
+							if(userProfileDetailsBean.getUserProfile() == null){
+								UserProfileBean userProfileBean = new UserProfileBean();
+								userProfileBean.setUserId(userId);
+								
+								userProfileDetailsBean.setUserProfile(userProfileBean);
+							}else{
+								userProfileDetailsBean.getUserProfile().setUserId(userId);
+							}
 							
-							userProfileDetailsBean.setUserProfile(userProfileBean);
+							userProfileDetailsResultBean = userProfileDaoAdapter.updateUserPassword(userProfileDetailsBean);
 						}else{
-							userProfileDetailsBean.getUserProfile().setUserId(userId);
+							errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
+							errorDescription = "Either path params or payload is null. User and/or its profile cannot be updated.";
+
+							userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+							userProfileDetailsResultBean.setErrorCode(errorCode);
+							userProfileDetailsResultBean.setErrorDescription(errorDescription);
+							
+							httpServletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 						}
-						
-						userProfileDaoAdapter.updateUserPassword(userProfileDetailsBean);
+					}else{
+						throw new UserDoesNotExistException("The existence of the user could not be ascertained with confidence.");
 					}
 				}
 				
-				if(profileUpdateExists){
-					userId = userProfileDetailsBean.getUserProfile().getUserId();
-					try{
-						isPrimaryProfile = Boolean.parseBoolean(userProfileDetailsBean.getUserProfile().getIsPrimaryProfile());
-					} catch(Exception e){
-						//Assume it's for the primary profile
-						isPrimaryProfile = true;
+				if("status".equals(updateItem)){
+					if(id.equals(userId)){
+						if(userProfileDetailsBean.getUserLogin() != null){
+							if(userProfileDetailsBean.getUserProfile() == null){
+								UserProfileBean userProfileBean = new UserProfileBean();
+								userProfileBean.setUserId(userId);
+								
+								userProfileDetailsBean.setUserProfile(userProfileBean);
+							}else{
+								userProfileDetailsBean.getUserProfile().setUserId(userId);
+							}
+							
+							userProfileDetailsResultBean = userProfileDaoAdapter.updateUserStatus(userProfileDetailsBean);
+							httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+						}else{
+							errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
+							errorDescription = "Either path params or payload is null. User and/or its profile cannot be updated.";
+
+							userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+							userProfileDetailsResultBean.setErrorCode(errorCode);
+							userProfileDetailsResultBean.setErrorDescription(errorDescription);
+							
+							httpServletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+						}
+					}else{
+						throw new UserDoesNotExistException("The existence of the user could not be ascertained with confidence.");
 					}
-					userProfileDaoAdapter.updateUserProfile(userProfileDetailsBean);
-					httpServletResponse.setStatus(HttpServletResponse.SC_OK);
 				}
 				
-				userProfileDetailsResultBean = userProfileDaoAdapter.getUserProfileDetails(userId, isPrimaryProfile);
+				if("profile".equals(updateItem)){
+					if(id.equals(userId)){
+						if(userProfileDetailsBean.getUserProfile() != null){
+							userProfileDetailsBean.getUserProfile().setUserId(userId);
+							userProfileDetailsResultBean = userProfileDaoAdapter.updateUserProfile(userProfileDetailsBean);
+							httpServletResponse.setStatus(HttpServletResponse.SC_OK);
+						}else{
+							errorCode = "" + HttpServletResponse.SC_BAD_REQUEST;
+							errorDescription = "Either path params or payload is null. User and/or its profile cannot be updated.";
+
+							userProfileDetailsResultBean = new UserProfileDetailsResultBean();
+							userProfileDetailsResultBean.setErrorCode(errorCode);
+							userProfileDetailsResultBean.setErrorDescription(errorDescription);
+							
+							httpServletResponse.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+						}
+					}else{
+						throw new UserDoesNotExistException("The existence of the user could not be ascertained with confidence.");
+					}
+				}
 			} catch (UserDoesNotExistException e){
 				userProfileDetailsResultBean = new UserProfileDetailsResultBean();
 				

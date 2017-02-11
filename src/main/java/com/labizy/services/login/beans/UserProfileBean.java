@@ -17,7 +17,6 @@ public class UserProfileBean {
 	private String maritalStatus;
 	private String profilePicture;
 	private String isPrimaryProfile;
-	private String status;
 	
 	public String getUserId() {
 		return userId;
@@ -84,11 +83,5 @@ public class UserProfileBean {
 	}
 	public void setIsPrimaryProfile(String isPrimaryProfile) {
 		this.isPrimaryProfile = isPrimaryProfile;
-	}
-	public String getStatus() {
-		return status;
-	}
-	public void setStatus(String status) {
-		this.status = status;
 	}
 }
