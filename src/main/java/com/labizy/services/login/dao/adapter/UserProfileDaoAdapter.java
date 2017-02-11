@@ -513,18 +513,15 @@ public class UserProfileDaoAdapter {
 			if(appLogger.isInfoEnabled()){
 				appLogger.info("Deleting UserId : {}", userId);
 			}
+
 			userProfileDaoManager.deleteUser(userId);
 		} catch (DataNotFoundException e) {
-			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
-			throw new ServiceException(e);
+			appLogger.warn(e.getMessage());
 		} catch (QueryExecutionException e) {
 			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
 			throw new ServiceException(e);
 		} catch (DatabaseConnectionException e) {
 			appLogger.error(e.getMessage());
-			appLogger.error(e.getCause().getMessage());
 			throw new ServiceException(e);
 		}
 		
