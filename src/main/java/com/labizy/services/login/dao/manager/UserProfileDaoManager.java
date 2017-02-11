@@ -158,7 +158,8 @@ public class UserProfileDaoManager {
 								+ "middle_name, last_name, sex, date_of_birth, marital_status, "
 								+ "profile_picture, is_primary_profile, email_id, password, COALESCE(status, 'active') AS status "
 								+ "FROM user_profile_tb, user_tb "
-								+ "WHERE user_tb.user_id = ? AND is_primary_profile = ? "
+								+ "WHERE user_tb.user_id = user_profile_tb.user_id "
+								+ "AND user_tb.user_id = ? AND is_primary_profile = ? "
 								+ "AND (status IS NULL OR status <> 'DELETED')"; 	
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
@@ -246,7 +247,8 @@ public class UserProfileDaoManager {
 								+ "middle_name, last_name, sex, date_of_birth, marital_status, "
 								+ "profile_picture, is_primary_profile, email_id, password, COALESCE(status, 'active') AS status "
 								+ "FROM user_profile_tb, user_tb "
-								+ "WHERE user_tb.user_id = ? AND email_id = ? "
+								+ "WHERE user_tb.user_id = user_profile_tb.user_id "
+								+ "AND user_tb.user_id = ? AND email_id = ? "
 								+ "AND (status IS NULL OR status <> 'DELETED')"; 	
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
@@ -331,7 +333,10 @@ public class UserProfileDaoManager {
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
 								+ "house_or_apartment_name, street_address, locality_name, city_town_or_village, "
 								+ "state, country, pin_code, landmark, latitude, longitude "
-								+ "FROM address_tb, user_address_tb WHERE user_id = ? AND is_primary_address = true"; 	
+								+ "FROM address_tb, user_address_tb "
+								+ "WHERE address_tb.address_id = user_address_tb.address_id "
+								+ "AND user_id = ? "
+								+ "AND is_primary_address = true"; 	
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
 			
@@ -421,7 +426,9 @@ public class UserProfileDaoManager {
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
 								+ "house_or_apartment_name, street_address, locality_name, city_town_or_village, "
 								+ "state, country, pin_code, landmark, latitude, longitude "
-								+ "FROM address_tb, user_address_tb WHERE user_id = ? AND is_billing_address = true"; 	
+								+ "FROM address_tb, user_address_tb "
+								+ "WHERE address_tb.address_id = user_address_tb.address_id "
+								+ "AND user_id = ? AND is_billing_address = true"; 	
 
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
@@ -512,7 +519,9 @@ public class UserProfileDaoManager {
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
 								+ "house_or_apartment_name, street_address, locality_name, city_town_or_village, "
 								+ "state, country, pin_code, landmark, latitude, longitude, is_primary_address, is_billing_address " 
-								+ "FROM address_tb, user_address_tb WHERE user_id = ? AND address_tb.address_id = ?"; 	
+								+ "FROM address_tb, user_address_tb "
+								+ "WHERE address_tb.address_id = user_address_tb.address_id "
+								+ "AND user_id = ? AND address_tb.address_id = ?"; 	
 
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
@@ -609,7 +618,9 @@ public class UserProfileDaoManager {
 			String sqlQuery = "SELECT user_id, address_tb.address_id AS address_id, house_or_flat_number, "
 								+ "house_or_apartment_name, street_address, locality_name, city_town_or_village, "
 								+ "state, country, pin_code, landmark, latitude, longitude, is_primary_address, is_billing_address " 
-								+ "FROM address_tb, user_address_tb WHERE user_id = ?"; 	
+								+ "FROM address_tb, user_address_tb "
+								+ "WHERE address_tb.address_id = user_address_tb.address_id "
+								+ "AND user_id = ?"; 	
 
 			preparedStatement = connection.prepareStatement(sqlQuery);
 			preparedStatement.setNString(1, userId);
@@ -706,7 +717,8 @@ public class UserProfileDaoManager {
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail, contact_type, is_primary_contact "
 				+ "FROM contact_tb, user_contact_tb "
-				+ "WHERE user_id = ?"; 	
+				+ "WHERE contact_tb.contact_id = user_contact_tb.contact_id "
+				+ "AND user_id = ?"; 	
 
 		try{
 			preparedStatement = connection.prepareStatement(sqlQuery);
@@ -766,7 +778,9 @@ public class UserProfileDaoManager {
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_detail "
 				+ "FROM contact_tb, user_contact_tb "
-				+ "WHERE user_id = ? AND contact_type = ? AND is_primary_contact = ?"; 	
+				+ "WHERE contact_tb.contact_id = user_contact_tb.contact_id "
+				+ "AND user_id = ? AND contact_type = ? "
+				+ "AND is_primary_contact = ?"; 	
 
 		try{
 			preparedStatement = connection.prepareStatement(sqlQuery);
@@ -824,7 +838,8 @@ public class UserProfileDaoManager {
 		
 		String sqlQuery = "SELECT user_id, contact_tb.contact_id AS contact_id, contact_type, contact_detail, is_primary_contact "
 				+ "FROM contact_tb, user_contact_tb "
-				+ "WHERE user_id = ? AND contact_tb.contact_id = ?"; 	
+				+ "WHERE contact_tb.contact_id = user_contact_tb.contact_id "
+				+ "AND user_id = ? AND contact_tb.contact_id = ?"; 	
 
 		try{
 			preparedStatement = connection.prepareStatement(sqlQuery);
