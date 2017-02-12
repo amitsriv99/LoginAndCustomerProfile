@@ -6,7 +6,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.slf4j.Logger;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import com.labizy.services.login.beans.PropertiesBean;
+import com.labizy.services.login.builder.PropertiesBuilder;
 import com.labizy.services.login.exceptions.EnvironNotDefPropertiesBuilderException;
 
 public class CommonUtils {
@@ -92,10 +95,36 @@ public class CommonUtils {
 	}
 	
 	public final String generateUniquePassword(){
-		String password = null;
-		password = "Hell0L@bizy";
+		if(logger.isDebugEnabled()){
+			logger.debug("Inside UniqueIdGenerator.generateUniquePassword() method..");
+		}
 		
-		return password;
+		String password = null;
+		String [] passwords = {"Nama$teLab1zy", "Hell0L@bizy", "H0laLabiz4", "Hell0Lab!zy", 
+									"Al0haLab!zy", "W3lcom3Lab!zy",	"We!comeL@bizy", "Al0haLab!z4", "Nama$teLabiz4", "Ho!a!abizy"};
+
+		try{
+			int randomNum = ThreadLocalRandom.current().nextInt(0, 10);
+			password = passwords[randomNum];
+		}catch(Exception e){
+			password = passwords[0];
+		}
+		
+		if(listOfNumbers == null){
+			listOfNumbers = new ArrayList<Integer>();  
+			
+	        for (int i = 1000; i <= 9999; i++) {
+	        	listOfNumbers.add(new Integer(i));
+	        }
+		}
+		
+        Collections.shuffle(listOfNumbers);
+        
+        int lowerIndex = 0;
+        int upperIndex = (listOfNumbers.size() - 1);
+        int randomIndex = ThreadLocalRandom.current().nextInt(lowerIndex, upperIndex);
+        
+		return (password + randomIndex);
 	}
 	
 	public final String getUniqueGeneratedId(String prefix, String suffix){
@@ -163,4 +192,31 @@ public class CommonUtils {
 		
 		return environ;
 	} 
+	
+	public static void main (String[] args){
+	    System.setProperty("environ", "local");
+
+		PropertiesBuilder propertiesBuilder = new PropertiesBuilder();
+		
+		PropertiesBean commonProperties = new PropertiesBean();
+		Set<String> supportedEnvirons = new HashSet<String>();
+		supportedEnvirons.add("local");
+		supportedEnvirons.add("prod");
+		supportedEnvirons.add("ppe");
+		commonProperties.setSupportedEnvirons(supportedEnvirons);
+		commonProperties.setEnvironSystemPropertyName("environ");
+		propertiesBuilder.setCommonProperties(commonProperties);
+		
+		CommonUtils commonUtils = new CommonUtils();
+		propertiesBuilder.setCommonUtils(commonUtils);
+		commonUtils.setCommonProperties(commonProperties);
+
+		commonUtils.setSeed(1L);
+		
+		String uniqueId = commonUtils.getUniqueGeneratedId("", "");
+		System.out.println("Unique Id : " + uniqueId);
+		
+		String password = commonUtils.generateUniquePassword();
+		System.out.println("Unique Password : " + password);
+	}	
 }
